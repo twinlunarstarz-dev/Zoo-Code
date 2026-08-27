@@ -12,6 +12,7 @@ import {
 	type CloudOrganizationMembership,
 	type ExtensionMessage,
 	type ExtensionState,
+	type ClineMessage,
 	type MarketplaceInstalledMetadata,
 	type SkillMetadata,
 	type RuleMetadata,
@@ -192,6 +193,25 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 		customModePrompts,
 		customSupportPrompts: customSupportPrompts ?? prevState.customSupportPrompts,
 		experiments,
+	}
+}
+
+export const applyTaskMessageAdded = (
+	prevState: ExtensionState,
+	clineMessage: ClineMessage,
+	clineMessagesSeq: number,
+): ExtensionState => {
+	if (
+		(prevState.clineMessagesSeq !== undefined && clineMessagesSeq <= prevState.clineMessagesSeq) ||
+		prevState.clineMessages.some((message) => message.ts === clineMessage.ts)
+	) {
+		return prevState
+	}
+
+	return {
+		...prevState,
+		clineMessages: [...prevState.clineMessages, clineMessage],
+		clineMessagesSeq,
 	}
 }
 
@@ -398,6 +418,14 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 						)
 						return prevState
 					})
+					break
+				}
+				case "taskMessageAdded": {
+					if (message.clineMessage && message.clineMessagesSeq !== undefined) {
+						setState((prevState) =>
+							applyTaskMessageAdded(prevState, message.clineMessage!, message.clineMessagesSeq!),
+						)
+					}
 					break
 				}
 				case "skills": {

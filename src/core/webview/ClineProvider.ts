@@ -2127,6 +2127,26 @@ export class ClineProvider
 	}
 
 	/**
+	 * Posts one newly-created task message instead of cloning and serializing the
+	 * complete transcript. Long-running tasks can contain thousands of messages;
+	 * repeatedly sending the full array makes the webview renderer retain large
+	 * structured-clone payloads and can eventually terminate it.
+	 */
+	async postTaskMessageAddedToWebview(clineMessage: ClineMessage): Promise<void> {
+		this.clineMessagesSeq++
+		await this.postMessageToWebview({
+			type: "taskMessageAdded",
+			clineMessage,
+			clineMessagesSeq: this.clineMessagesSeq,
+		})
+	}
+
+	/** Posts only mutable task fields that do not require a transcript snapshot. */
+	async postTaskStateToWebview(state: Pick<ExtensionState, "currentTaskTodos" | "messageQueue">): Promise<void> {
+		await this.postMessageToWebview({ type: "state", state })
+	}
+
+	/**
 	 * Like postStateToWebview but intentionally omits both clineMessages and taskHistory.
 	 *
 	 * Rationale:
@@ -2333,6 +2353,12 @@ export class ClineProvider
 			imageGenerationProvider,
 			openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel,
+			openAiCompatibleImageGenerationBaseUrl,
+			openAiCompatibleImageGenerationApiKey,
+			openAiCompatibleImageGenerationModel,
+			imageProcessingEnabled,
+			imageProcessingApiConfigId,
+			imageProcessingPrompt,
 			lockApiConfigAcrossModes,
 			autoCloseZooOpenedFiles,
 			autoCloseZooOpenedFilesAfterUserEdited,
@@ -2518,6 +2544,12 @@ export class ClineProvider
 			imageGenerationProvider,
 			openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel,
+			openAiCompatibleImageGenerationBaseUrl,
+			openAiCompatibleImageGenerationApiKey,
+			openAiCompatibleImageGenerationModel,
+			imageProcessingEnabled,
+			imageProcessingApiConfigId,
+			imageProcessingPrompt,
 			autoCloseZooOpenedFiles: autoCloseZooOpenedFiles ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES,
 			autoCloseZooOpenedFilesAfterUserEdited:
 				autoCloseZooOpenedFilesAfterUserEdited ?? DEFAULT_AUTO_CLOSE_ZOO_OPENED_FILES_AFTER_USER_EDITED,
@@ -2725,6 +2757,12 @@ export class ClineProvider
 			imageGenerationProvider: stateValues.imageGenerationProvider,
 			openRouterImageApiKey: stateValues.openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel: stateValues.openRouterImageGenerationSelectedModel,
+			openAiCompatibleImageGenerationBaseUrl: stateValues.openAiCompatibleImageGenerationBaseUrl,
+			openAiCompatibleImageGenerationApiKey: stateValues.openAiCompatibleImageGenerationApiKey,
+			openAiCompatibleImageGenerationModel: stateValues.openAiCompatibleImageGenerationModel,
+			imageProcessingEnabled: stateValues.imageProcessingEnabled,
+			imageProcessingApiConfigId: stateValues.imageProcessingApiConfigId,
+			imageProcessingPrompt: stateValues.imageProcessingPrompt,
 			autoCloseZooOpenedFiles: stateValues.autoCloseZooOpenedFiles,
 			autoCloseZooOpenedFilesAfterUserEdited: stateValues.autoCloseZooOpenedFilesAfterUserEdited,
 			autoCloseZooOpenedNewFiles: stateValues.autoCloseZooOpenedNewFiles,

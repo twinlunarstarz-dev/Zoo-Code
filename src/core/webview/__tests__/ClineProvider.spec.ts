@@ -722,6 +722,19 @@ describe("ClineProvider", () => {
 		expect(postMessageSpy).not.toHaveBeenCalledWith(expect.objectContaining({ type: "action" }))
 	})
 
+	test("postTaskMessageAddedToWebview sends only the new message with an incremented sequence", async () => {
+		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockImplementation(async () => undefined)
+		const clineMessage = { ts: 123, type: "say", say: "text", text: "incremental" } as ClineMessage
+
+		await provider.postTaskMessageAddedToWebview(clineMessage)
+
+		expect(postMessageSpy).toHaveBeenCalledWith({
+			type: "taskMessageAdded",
+			clineMessage,
+			clineMessagesSeq: 1,
+		})
+	})
+
 	test("postMessageToWebview skips postMessage after dispose", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 

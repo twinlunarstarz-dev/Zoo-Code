@@ -2577,9 +2577,9 @@ describe("Cline", () => {
 			resumeSpy.mockRestore()
 		})
 
-		it("logs (instead of crashing) when postStateToWebviewWithoutTaskHistory rejects from the queue handler", async () => {
+		it("logs (instead of crashing) when postTaskStateToWebview rejects from the queue handler", async () => {
 			const boom = new Error("postState boom")
-			mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockRejectedValue(boom)
+			mockProvider.postTaskStateToWebview = vi.fn().mockRejectedValue(boom)
 
 			const task = new Task({
 				provider: mockProvider,
@@ -2588,15 +2588,57 @@ describe("Cline", () => {
 				startTask: false,
 			})
 
-			// Triggers messageQueueStateChangedHandler -> void postStateToWebviewWithoutTaskHistory()
+			// Triggers messageQueueStateChangedHandler -> void postTaskStateToWebview()
 			task.messageQueueService.addMessage("queued text")
 			await flushMicrotasks()
 
-			expect(mockProvider.postStateToWebviewWithoutTaskHistory).toHaveBeenCalled()
+			expect(mockProvider.postTaskStateToWebview).toHaveBeenCalled()
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"[Task#messageQueueStateChangedHandler] postStateToWebviewWithoutTaskHistory failed:",
+				"[Task#messageQueueStateChangedHandler] postTaskStateToWebview failed:",
 				boom,
 			)
+		})
+
+		it("sends only queue state when queued messages change", async () => {
+			mockProvider.postTaskStateToWebview = vi.fn().mockResolvedValue(undefined)
+
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			task.clineMessages = Array.from({ length: 3_000 }, (_, index) => ({
+				ts: index,
+				type: "say" as const,
+				say: "text" as const,
+				text: "large transcript row",
+			}))
+
+			task.messageQueueService.addMessage("queued text")
+			await flushMicrotasks()
+
+			expect(mockProvider.postTaskStateToWebview).toHaveBeenCalledWith({
+				messageQueue: task.messageQueueService.messages,
+			})
+			expect(mockProvider.postStateToWebviewWithoutTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("adds a message through an incremental webview update instead of cloning the transcript", async () => {
+			mockProvider.postTaskMessageAddedToWebview = vi.fn().mockResolvedValue(undefined)
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+			const message = { ts: Date.now(), type: "say" as const, say: "text" as const, text: "new row" }
+
+			await (task as any).addToClineMessages(message)
+
+			expect(mockProvider.postTaskMessageAddedToWebview).toHaveBeenCalledWith(message)
+			expect(mockProvider.postStateToWebviewWithoutTaskHistory).not.toHaveBeenCalled()
 		})
 
 		it("logs (instead of crashing) when startTask rejects from start()", async () => {

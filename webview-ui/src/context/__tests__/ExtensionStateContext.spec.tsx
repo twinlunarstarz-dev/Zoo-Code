@@ -10,7 +10,12 @@ import {
 	DEFAULT_DIFF_FUZZY_THRESHOLD,
 } from "@roo-code/types"
 
-import { ExtensionStateContextProvider, useExtensionState, mergeExtensionState } from "../ExtensionStateContext"
+import {
+	ExtensionStateContextProvider,
+	useExtensionState,
+	mergeExtensionState,
+	applyTaskMessageAdded,
+} from "../ExtensionStateContext"
 
 const TestComponent = () => {
 	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles, setShowRooIgnoredFiles } =
@@ -432,6 +437,36 @@ describe("mergeExtensionState", () => {
 
 		const makeMessage = (ts: number, text: string): ClineMessage =>
 			({ ts, type: "say", say: "text", text }) as ClineMessage
+
+		it("appends an incremental task message without replacing the existing transcript", () => {
+			const existingMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
+			const addedMessage = makeMessage(3, "incremental")
+
+			const result = applyTaskMessageAdded(
+				{
+					...baseState,
+					clineMessages: existingMessages,
+					clineMessagesSeq: 5,
+				},
+				addedMessage,
+				6,
+			)
+
+			expect(result.clineMessages).toEqual([...existingMessages, addedMessage])
+			expect(result.clineMessagesSeq).toBe(6)
+		})
+
+		it("ignores stale and duplicate incremental task messages", () => {
+			const existingMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
+			const state = {
+				...baseState,
+				clineMessages: existingMessages,
+				clineMessagesSeq: 5,
+			}
+
+			expect(applyTaskMessageAdded(state, makeMessage(3, "stale"), 4)).toBe(state)
+			expect(applyTaskMessageAdded(state, makeMessage(2, "duplicate"), 6)).toBe(state)
+		})
 
 		it("rejects stale clineMessages when seq is not newer", () => {
 			const newerMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
