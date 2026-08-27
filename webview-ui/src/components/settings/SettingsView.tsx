@@ -208,6 +208,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		imageGenerationProvider,
 		openRouterImageApiKey,
 		openRouterImageGenerationSelectedModel,
+		openAiCompatibleImageGenerationBaseUrl,
+		openAiCompatibleImageGenerationApiKey,
+		openAiCompatibleImageGenerationModel,
+		imageProcessingEnabled,
+		imageProcessingApiConfigId,
+		imageProcessingPrompt,
 		reasoningBlockCollapsed,
 		chatFontSize,
 		enterBehavior,
@@ -358,6 +364,48 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			return { ...prevState, openRouterImageGenerationSelectedModel: model }
 		})
 	}, [])
+
+	const setOpenAiCompatibleImageGenerationBaseUrl = useCallback(
+		(value: string) => {
+			setCachedStateField("openAiCompatibleImageGenerationBaseUrl", value)
+		},
+		[setCachedStateField],
+	)
+
+	const setOpenAiCompatibleImageGenerationApiKey = useCallback(
+		(value: string) => {
+			setCachedStateField("openAiCompatibleImageGenerationApiKey", value)
+		},
+		[setCachedStateField],
+	)
+
+	const setOpenAiCompatibleImageGenerationModel = useCallback(
+		(value: string) => {
+			setCachedStateField("openAiCompatibleImageGenerationModel", value)
+		},
+		[setCachedStateField],
+	)
+
+	const setImageProcessingEnabled = useCallback(
+		(value: boolean) => {
+			setCachedStateField("imageProcessingEnabled", value)
+		},
+		[setCachedStateField],
+	)
+
+	const setImageProcessingApiConfigId = useCallback(
+		(value: string) => {
+			setCachedStateField("imageProcessingApiConfigId", value)
+		},
+		[setCachedStateField],
+	)
+
+	const setImageProcessingPrompt = useCallback(
+		(value: string) => {
+			setCachedStateField("imageProcessingPrompt", value)
+		},
+		[setCachedStateField],
+	)
 
 	const setCustomSupportPromptsField = useCallback((prompts: Record<string, string | undefined>) => {
 		setCachedState((prevState) => {
@@ -950,6 +998,25 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								setImageGenerationProvider={setImageGenerationProvider}
 								setOpenRouterImageApiKey={setOpenRouterImageApiKey}
 								setImageGenerationSelectedModel={setImageGenerationSelectedModel}
+								openAiCompatibleImageGenerationBaseUrl={
+									openAiCompatibleImageGenerationBaseUrl as string | undefined
+								}
+								openAiCompatibleImageGenerationApiKey={
+									openAiCompatibleImageGenerationApiKey as string | undefined
+								}
+								openAiCompatibleImageGenerationModel={
+									openAiCompatibleImageGenerationModel as string | undefined
+								}
+								imageProcessingEnabled={imageProcessingEnabled as boolean | undefined}
+								imageProcessingApiConfigId={imageProcessingApiConfigId as string | undefined}
+								imageProcessingPrompt={imageProcessingPrompt as string | undefined}
+								listApiConfigMeta={listApiConfigMeta}
+								setOpenAiCompatibleImageGenerationBaseUrl={setOpenAiCompatibleImageGenerationBaseUrl}
+								setOpenAiCompatibleImageGenerationApiKey={setOpenAiCompatibleImageGenerationApiKey}
+								setOpenAiCompatibleImageGenerationModel={setOpenAiCompatibleImageGenerationModel}
+								setImageProcessingEnabled={setImageProcessingEnabled}
+								setImageProcessingApiConfigId={setImageProcessingApiConfigId}
+								setImageProcessingPrompt={setImageProcessingPrompt}
 							/>
 						)}
 

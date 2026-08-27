@@ -8,6 +8,7 @@ import * as fileUtils from "../../../utils/fs"
 import { formatResponse } from "../../prompts/responses"
 import { EXPERIMENT_IDS } from "../../../shared/experiments"
 import { OpenRouterHandler } from "../../../api/providers/openrouter"
+import { generateImageWithImagesApi } from "../../../api/providers/utils/image-generation"
 
 // Mock dependencies
 vi.mock("fs/promises")
@@ -15,6 +16,7 @@ vi.mock("../../../utils/pathUtils")
 vi.mock("../../../utils/fs")
 vi.mock("../../../utils/safeWriteJson")
 vi.mock("../../../api/providers/openrouter")
+vi.mock("../../../api/providers/utils/image-generation")
 
 describe("generateImageTool", () => {
 	let mockCline: any
@@ -306,6 +308,53 @@ describe("generateImageTool", () => {
 					"Image generation is an experimental feature that must be enabled in settings. Please enable 'Image Generation' in the Experimental Settings section.",
 				),
 			)
+		})
+	})
+
+	describe("OpenAI-compatible provider", () => {
+		it("should generate an image through the configured OpenAI-compatible Images API", async () => {
+			const mockGenerateImage = vi.mocked(generateImageWithImagesApi).mockResolvedValue({
+				success: true,
+				imageData: "data:image/png;base64,fakebase64data",
+			})
+			mockCline.providerRef.deref().getState.mockResolvedValue({
+				experiments: {
+					[EXPERIMENT_IDS.IMAGE_GENERATION]: true,
+				},
+				imageGenerationProvider: "openai-compatible",
+				openAiCompatibleImageGenerationBaseUrl: "https://images.example.test/v1/",
+				openAiCompatibleImageGenerationApiKey: "compatible-api-key",
+				openAiCompatibleImageGenerationModel: "custom-image-model",
+			})
+
+			const block: ToolUse = {
+				type: "tool_use",
+				name: "generate_image",
+				params: {
+					prompt: "Generate a test image",
+					path: "test-image.png",
+				},
+				nativeArgs: {
+					prompt: "Generate a test image",
+					path: "test-image.png",
+				},
+				partial: false,
+			}
+
+			await generateImageTool.handle(mockCline as Task, block as ToolUse<"generate_image">, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockGenerateImage).toHaveBeenCalledWith({
+				baseURL: "https://images.example.test/v1",
+				authToken: "compatible-api-key",
+				model: "custom-image-model",
+				prompt: "Generate a test image",
+				inputImage: undefined,
+			})
+			expect(mockCline.recordToolUsage).toHaveBeenCalledWith("generate_image")
 		})
 	})
 

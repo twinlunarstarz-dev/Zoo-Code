@@ -13,6 +13,12 @@ describe("ImageGenerationSettings", () => {
 	const mockSetImageGenerationProvider = vi.fn()
 	const mockSetOpenRouterImageApiKey = vi.fn()
 	const mockSetImageGenerationSelectedModel = vi.fn()
+	const mockSetOpenAiCompatibleImageGenerationBaseUrl = vi.fn()
+	const mockSetOpenAiCompatibleImageGenerationApiKey = vi.fn()
+	const mockSetOpenAiCompatibleImageGenerationModel = vi.fn()
+	const mockSetImageProcessingEnabled = vi.fn()
+	const mockSetImageProcessingApiConfigId = vi.fn()
+	const mockSetImageProcessingPrompt = vi.fn()
 	const mockOnChange = vi.fn()
 
 	const defaultProps = {
@@ -24,6 +30,12 @@ describe("ImageGenerationSettings", () => {
 		setImageGenerationProvider: mockSetImageGenerationProvider,
 		setOpenRouterImageApiKey: mockSetOpenRouterImageApiKey,
 		setImageGenerationSelectedModel: mockSetImageGenerationSelectedModel,
+		setOpenAiCompatibleImageGenerationBaseUrl: mockSetOpenAiCompatibleImageGenerationBaseUrl,
+		setOpenAiCompatibleImageGenerationApiKey: mockSetOpenAiCompatibleImageGenerationApiKey,
+		setOpenAiCompatibleImageGenerationModel: mockSetOpenAiCompatibleImageGenerationModel,
+		setImageProcessingEnabled: mockSetImageProcessingEnabled,
+		setImageProcessingApiConfigId: mockSetImageProcessingApiConfigId,
+		setImageProcessingPrompt: mockSetImageProcessingPrompt,
 	}
 
 	beforeEach(() => {
@@ -96,6 +108,19 @@ describe("ImageGenerationSettings", () => {
 			expect(
 				queryByPlaceholderText("settings:experimental.IMAGE_GENERATION.openRouterApiKeyPlaceholder"),
 			).not.toBeInTheDocument()
+		})
+
+		it("should render OpenAI-compatible configuration fields when that provider is selected", () => {
+			const { getByPlaceholderText } = render(
+				<ImageGenerationSettings
+					{...defaultProps}
+					enabled={true}
+					imageGenerationProvider="openai-compatible"
+				/>,
+			)
+
+			expect(getByPlaceholderText("https://api.example.com/v1")).toBeInTheDocument()
+			expect(getByPlaceholderText("gpt-image-1")).toBeInTheDocument()
 		})
 	})
 })

@@ -33,6 +33,7 @@ export interface ExtensionMessage {
 		| "theme"
 		| "workspaceUpdated"
 		| "invoke"
+		| "taskMessageAdded"
 		| "messageUpdated"
 		| "mcpServers"
 		| "enhancedPrompt"
@@ -134,6 +135,8 @@ export interface ExtensionMessage {
 		path?: string
 	}>
 	clineMessage?: ClineMessage
+	/** Sequence for incremental task-message synchronization. */
+	clineMessagesSeq?: number
 	routerModels?: RouterModels
 	openAiModels?: string[]
 	ollamaModels?: ModelRecord
@@ -313,6 +316,11 @@ export type ExtensionState = Pick<
 	| "maxDiagnosticMessages"
 	| "imageGenerationProvider"
 	| "openRouterImageGenerationSelectedModel"
+	| "openAiCompatibleImageGenerationBaseUrl"
+	| "openAiCompatibleImageGenerationModel"
+	| "imageProcessingEnabled"
+	| "imageProcessingApiConfigId"
+	| "imageProcessingPrompt"
 	| "includeTaskHistoryInEnhance"
 	| "reasoningBlockCollapsed"
 	| "chatFontSize"
@@ -384,6 +392,7 @@ export type ExtensionState = Pick<
 	profileThresholds: Record<string, number>
 	hasOpenedModeSelector: boolean
 	openRouterImageApiKey?: string
+	openAiCompatibleImageGenerationApiKey?: string
 	messageQueue?: QueuedMessage[]
 	lastShownAnnouncementId?: string
 	apiModelId?: string

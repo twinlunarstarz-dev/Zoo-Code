@@ -1,6 +1,6 @@
 import { HTMLAttributes } from "react"
 
-import type { Experiments, ImageGenerationProvider } from "@roo-code/types"
+import type { Experiments, ImageGenerationProvider, ProviderSettingsEntry } from "@roo-code/types"
 
 import { EXPERIMENT_IDS, experimentConfigsMap } from "@roo/experiments"
 
@@ -23,9 +23,22 @@ type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	imageGenerationProvider?: ImageGenerationProvider
 	openRouterImageApiKey?: string
 	openRouterImageGenerationSelectedModel?: string
+	openAiCompatibleImageGenerationBaseUrl?: string
+	openAiCompatibleImageGenerationApiKey?: string
+	openAiCompatibleImageGenerationModel?: string
+	imageProcessingEnabled?: boolean
+	imageProcessingApiConfigId?: string
+	imageProcessingPrompt?: string
+	listApiConfigMeta?: ProviderSettingsEntry[]
 	setImageGenerationProvider?: (provider: ImageGenerationProvider) => void
 	setOpenRouterImageApiKey?: (apiKey: string) => void
 	setImageGenerationSelectedModel?: (model: string) => void
+	setOpenAiCompatibleImageGenerationBaseUrl?: (value: string) => void
+	setOpenAiCompatibleImageGenerationApiKey?: (value: string) => void
+	setOpenAiCompatibleImageGenerationModel?: (value: string) => void
+	setImageProcessingEnabled?: (value: boolean) => void
+	setImageProcessingApiConfigId?: (value: string) => void
+	setImageProcessingPrompt?: (value: string) => void
 }
 
 export const ExperimentalSettings = ({
@@ -36,9 +49,22 @@ export const ExperimentalSettings = ({
 	imageGenerationProvider,
 	openRouterImageApiKey,
 	openRouterImageGenerationSelectedModel,
+	openAiCompatibleImageGenerationBaseUrl,
+	openAiCompatibleImageGenerationApiKey,
+	openAiCompatibleImageGenerationModel,
+	imageProcessingEnabled,
+	imageProcessingApiConfigId,
+	imageProcessingPrompt,
+	listApiConfigMeta,
 	setImageGenerationProvider,
 	setOpenRouterImageApiKey,
 	setImageGenerationSelectedModel,
+	setOpenAiCompatibleImageGenerationBaseUrl,
+	setOpenAiCompatibleImageGenerationApiKey,
+	setOpenAiCompatibleImageGenerationModel,
+	setImageProcessingEnabled,
+	setImageProcessingApiConfigId,
+	setImageProcessingPrompt,
 	className,
 	...props
 }: ExperimentalSettingsProps) => {
@@ -61,7 +87,13 @@ export const ExperimentalSettings = ({
 							config[0] === "IMAGE_GENERATION" &&
 							setImageGenerationProvider &&
 							setOpenRouterImageApiKey &&
-							setImageGenerationSelectedModel
+							setImageGenerationSelectedModel &&
+							setOpenAiCompatibleImageGenerationBaseUrl &&
+							setOpenAiCompatibleImageGenerationApiKey &&
+							setOpenAiCompatibleImageGenerationModel &&
+							setImageProcessingEnabled &&
+							setImageProcessingApiConfigId &&
+							setImageProcessingPrompt
 						) {
 							return (
 								<SearchableSetting
@@ -80,6 +112,25 @@ export const ExperimentalSettings = ({
 										setImageGenerationProvider={setImageGenerationProvider}
 										setOpenRouterImageApiKey={setOpenRouterImageApiKey}
 										setImageGenerationSelectedModel={setImageGenerationSelectedModel}
+										openAiCompatibleImageGenerationBaseUrl={openAiCompatibleImageGenerationBaseUrl}
+										openAiCompatibleImageGenerationApiKey={openAiCompatibleImageGenerationApiKey}
+										openAiCompatibleImageGenerationModel={openAiCompatibleImageGenerationModel}
+										imageProcessingEnabled={imageProcessingEnabled}
+										imageProcessingApiConfigId={imageProcessingApiConfigId}
+										imageProcessingPrompt={imageProcessingPrompt}
+										listApiConfigMeta={listApiConfigMeta}
+										setOpenAiCompatibleImageGenerationBaseUrl={
+											setOpenAiCompatibleImageGenerationBaseUrl
+										}
+										setOpenAiCompatibleImageGenerationApiKey={
+											setOpenAiCompatibleImageGenerationApiKey
+										}
+										setOpenAiCompatibleImageGenerationModel={
+											setOpenAiCompatibleImageGenerationModel
+										}
+										setImageProcessingEnabled={setImageProcessingEnabled}
+										setImageProcessingApiConfigId={setImageProcessingApiConfigId}
+										setImageProcessingPrompt={setImageProcessingPrompt}
 									/>
 								</SearchableSetting>
 							)

@@ -14,6 +14,7 @@ import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { OpenRouterHandler } from "../../api/providers/openrouter"
+import { generateImageWithImagesApi } from "../../api/providers/utils/image-generation"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 import { t } from "../../i18n"
@@ -127,13 +128,18 @@ export class GenerateImageTool extends BaseTool<"generate_image"> {
 			!!state?.openRouterImageGenerationSelectedModel,
 		)
 
-		// Get the selected model
-		let selectedModel = state?.openRouterImageGenerationSelectedModel
+		// Get the selected model.
+		let selectedModel =
+			imageProvider === "openai-compatible"
+				? state?.openAiCompatibleImageGenerationModel
+				: state?.openRouterImageGenerationSelectedModel
 		let modelInfo = undefined
 
 		// Find the model info matching both value AND provider
 		// (since the same model value can exist for multiple providers)
-		if (selectedModel) {
+		if (imageProvider === "openai-compatible") {
+			modelInfo = undefined
+		} else if (selectedModel) {
 			modelInfo = IMAGE_GENERATION_MODELS.find((m) => m.value === selectedModel && m.provider === imageProvider)
 			if (!modelInfo) {
 				// Model doesn't exist for this provider, use first model for selected provider
@@ -152,11 +158,24 @@ export class GenerateImageTool extends BaseTool<"generate_image"> {
 		const modelProvider = imageProvider
 		const apiMethod = modelInfo?.apiMethod
 
-		// Validate API key for OpenRouter
+		// Validate provider configuration.
 		const openRouterApiKey = state?.openRouterImageApiKey
+		const openAiCompatibleApiKey = state?.openAiCompatibleImageGenerationApiKey
+		const openAiCompatibleBaseUrl = state?.openAiCompatibleImageGenerationBaseUrl
 
 		if (imageProvider === "openrouter" && !openRouterApiKey) {
 			const errorMessage = t("tools:generateImage.openRouterApiKeyRequired")
+			await task.say("error", errorMessage)
+			pushToolResult(formatResponse.toolError(errorMessage))
+			return
+		}
+
+		if (
+			imageProvider === "openai-compatible" &&
+			(!openAiCompatibleApiKey || !openAiCompatibleBaseUrl || !selectedModel)
+		) {
+			const errorMessage =
+				"An OpenAI-compatible image generation endpoint, API key, and model are required for image generation."
 			await task.say("error", errorMessage)
 			pushToolResult(formatResponse.toolError(errorMessage))
 			return
@@ -188,13 +207,21 @@ export class GenerateImageTool extends BaseTool<"generate_image"> {
 				return
 			}
 
-			const openRouterHandler = new OpenRouterHandler({} as any)
-			const result = await openRouterHandler.generateImage(
-				prompt,
-				selectedModel,
-				openRouterApiKey!,
-				inputImageData,
-			)
+			const result =
+				imageProvider === "openai-compatible"
+					? await generateImageWithImagesApi({
+							baseURL: openAiCompatibleBaseUrl!.replace(/\/$/, ""),
+							authToken: openAiCompatibleApiKey!,
+							model: selectedModel!,
+							prompt,
+							inputImage: inputImageData,
+						})
+					: await new OpenRouterHandler({} as any).generateImage(
+							prompt,
+							selectedModel!,
+							openRouterApiKey!,
+							inputImageData,
+						)
 
 			if (!result.success) {
 				await task.say("error", result.error || "Failed to generate image")

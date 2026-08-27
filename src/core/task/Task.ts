@@ -547,12 +547,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.emit(RooCodeEventName.QueuedMessagesUpdated, this.taskId, this.messageQueueService.messages)
 			void this.providerRef
 				.deref()
-				?.postStateToWebviewWithoutTaskHistory()
+				?.postTaskStateToWebview({ messageQueue: this.messageQueueService.messages })
 				.catch((error) => {
-					console.error(
-						"[Task#messageQueueStateChangedHandler] postStateToWebviewWithoutTaskHistory failed:",
-						error,
-					)
+					console.error("[Task#messageQueueStateChangedHandler] postTaskStateToWebview failed:", error)
 				})
 		}
 
@@ -1043,9 +1040,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async addToClineMessages(message: ClineMessage) {
 		this.clineMessages.push(message)
 		const provider = this.providerRef.deref()
-		// Avoid resending large, mostly-static fields (notably taskHistory) on every chat message update.
-		// taskHistory is maintained in-memory in the webview and updated via taskHistoryItemUpdated.
-		await provider?.postStateToWebviewWithoutTaskHistory()
+		if (provider) {
+			if (typeof provider.postTaskMessageAddedToWebview === "function") {
+				await provider.postTaskMessageAddedToWebview(message)
+			} else {
+				// Compatibility fallback for embedders and tests using a partial provider.
+				await provider.postStateToWebviewWithoutTaskHistory()
+			}
+		}
 		this.emit(RooCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
@@ -4005,6 +4007,90 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
+	/**
+	 * Replaces image blocks with detailed descriptions from an explicitly selected
+	 * provider profile. This permits image context when the task model itself does
+	 * not advertise vision support, without changing the persisted conversation.
+	 */
+	private async describeImagesWithConfiguredModel(
+		messages: ApiMessage[],
+		state:
+			| {
+					imageProcessingEnabled?: boolean
+					imageProcessingApiConfigId?: string
+					imageProcessingPrompt?: string
+					listApiConfigMeta?: Array<{ id: string }>
+			  }
+			| undefined,
+	): Promise<ApiMessage[]> {
+		const profileId = state?.imageProcessingApiConfigId
+		if (
+			!state?.imageProcessingEnabled ||
+			!profileId ||
+			!state.listApiConfigMeta?.some((profile) => profile.id === profileId)
+		) {
+			return messages
+		}
+
+		const hasImages = messages.some(
+			(message) => Array.isArray(message.content) && message.content.some((block) => block.type === "image"),
+		)
+		if (!hasImages) {
+			return messages
+		}
+
+		try {
+			const profile = await this.providerRef.deref()?.providerSettingsManager.getProfile({ id: profileId })
+			if (!profile?.apiProvider) {
+				return messages
+			}
+
+			const imageProcessor = buildApiHandler(profile)
+			const instruction =
+				state.imageProcessingPrompt?.trim() ||
+				"Describe this image in exhaustive, precise detail. Include all visible text, objects, layout, relationships, colors, context, and relevant visual details so your description can answer any possible question about the image."
+
+			return await Promise.all(
+				messages.map(async (message) => {
+					if (!Array.isArray(message.content) || !message.content.some((block) => block.type === "image")) {
+						return message
+					}
+
+					const content = await Promise.all(
+						message.content.map(async (block) => {
+							if (block.type !== "image") {
+								return block
+							}
+
+							let description = "[Referenced image in conversation]"
+							try {
+								const stream = imageProcessor.createMessage(
+									instruction,
+									[{ role: "user", content: [{ type: "text", text: instruction }, block] }],
+									{ taskId: this.taskId },
+								)
+								let response = ""
+								for await (const chunk of stream) {
+									if (chunk.type === "text") response += chunk.text
+								}
+								description = response.trim() || description
+							} catch (error) {
+								console.warn(`[Task] Failed to describe image with profile "${profileId}"`, error)
+							}
+
+							return { type: "text" as const, text: `[Image description]\n${description}` }
+						}),
+					)
+
+					return { ...message, content }
+				}),
+			)
+		} catch (error) {
+			console.warn(`[Task] Failed to load image processing profile "${profileId}"`, error)
+			return messages
+		}
+	}
+
 	public async *attemptApiRequest(
 		retryAttempt: number = 0,
 		options: { skipProviderRateLimit?: boolean } = {},
@@ -4230,7 +4316,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// For API only: merge consecutive user messages (excludes summary messages per
 		// mergeConsecutiveApiMessages implementation) without mutating stored history.
 		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
-		const messagesWithoutImages = maybeRemoveImageBlocks(mergedForApi, this.api)
+		const imageDescriptionsApplied = await this.describeImagesWithConfiguredModel(mergedForApi, state)
+		const messagesWithoutImages = maybeRemoveImageBlocks(imageDescriptionsApplied, this.api)
 		const cleanConversationHistory = this.buildCleanConversationHistory(messagesWithoutImages as ApiMessage[])
 
 		// Check auto-approval limits

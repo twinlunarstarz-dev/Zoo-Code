@@ -32,7 +32,7 @@ export const IMAGE_GENERATION_MODEL_IDS = IMAGE_GENERATION_MODELS.map((m) => m.v
 /**
  * Image generation provider type
  */
-export type ImageGenerationProvider = "openrouter"
+export type ImageGenerationProvider = "openrouter" | "openai-compatible"
 
 /**
  * Get the image generation provider with backwards compatibility
