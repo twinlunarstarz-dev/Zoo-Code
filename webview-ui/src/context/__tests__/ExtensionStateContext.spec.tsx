@@ -15,6 +15,7 @@ import {
 	useExtensionState,
 	mergeExtensionState,
 	applyTaskMessageAdded,
+	shouldShowWelcomeForState,
 } from "../ExtensionStateContext"
 
 const TestComponent = () => {
@@ -77,6 +78,16 @@ const ApiConfigTestComponent = () => {
 }
 
 describe("ExtensionStateContext", () => {
+	it("does not show setup when a partial state update omits API configuration", () => {
+		expect(shouldShowWelcomeForState({ mode: "code" }, { apiProvider: "anthropic", apiKey: "test-key" })).toBe(
+			false,
+		)
+	})
+
+	it("shows setup when a full hydration explicitly contains an empty API configuration", () => {
+		expect(shouldShowWelcomeForState({ apiConfiguration: {} }, { apiProvider: "anthropic" })).toBe(true)
+	})
+
 	it("initializes with empty allowedCommands array", () => {
 		render(
 			<ExtensionStateContextProvider>

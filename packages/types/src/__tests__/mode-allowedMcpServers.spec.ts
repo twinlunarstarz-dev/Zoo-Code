@@ -1,6 +1,18 @@
 import { modeConfigSchema } from "../mode.js"
 
 describe("modeConfigSchema allowedMcpServers", () => {
+	it("accepts an explicit layered-tools mode override while defaulting missing values to enabled semantics", () => {
+		const defaultResult = modeConfigSchema.safeParse(baseModeConfig)
+		const disabledResult = modeConfigSchema.safeParse({ ...baseModeConfig, layeredTools: false })
+
+		expect(defaultResult.success).toBe(true)
+		expect(disabledResult.success).toBe(true)
+		if (defaultResult.success && disabledResult.success) {
+			expect(defaultResult.data.layeredTools).toBeUndefined()
+			expect(disabledResult.data.layeredTools).toBe(false)
+		}
+	})
+
 	const baseModeConfig = {
 		slug: "test-mode",
 		name: "Test Mode",

@@ -27,6 +27,10 @@
 					"customInstructions": {
 						"type": "string"
 					},
+					"layeredTools": {
+						"type": "boolean",
+						"description": "Whether this mode may use the search, documentation, and execute gateways when layered tooling is active. Defaults to enabled when omitted."
+					},
 					"source": {
 						"type": "string",
 						"enum": ["global", "project"]

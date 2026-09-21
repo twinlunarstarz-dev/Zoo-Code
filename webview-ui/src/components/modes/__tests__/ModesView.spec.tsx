@@ -26,6 +26,7 @@ const mockExtensionState = {
 	currentApiConfigName: "",
 	customInstructions: "Initial instructions",
 	setCustomInstructions: vitest.fn(),
+	experiments: {},
 }
 
 const renderPromptsView = (props = {}) => {
@@ -47,6 +48,37 @@ describe("PromptsView", () => {
 		renderPromptsView({ mode: "code" })
 		const selectTrigger = screen.getByTestId("mode-select-trigger")
 		expect(selectTrigger).toHaveTextContent("Code")
+	})
+
+	it("shows a default-enabled layered tools setting only while the experiment is enabled", () => {
+		const { unmount } = renderPromptsView({ experiments: {} })
+		expect(screen.queryByTestId("layered-tools-toggle")).not.toBeInTheDocument()
+		unmount()
+
+		renderPromptsView({ experiments: { layeredTooling: true } })
+		expect(screen.getByTestId("layered-tools-toggle")).toBeChecked()
+	})
+
+	it("persists disabling layered tools without changing the mode's existing groups", () => {
+		const customMode = {
+			slug: "custom-mode",
+			name: "Custom Mode",
+			roleDefinition: "Custom role",
+			groups: ["read", "mcp"],
+		}
+		renderPromptsView({
+			mode: "custom-mode",
+			customModes: [customMode],
+			experiments: { layeredTooling: true },
+		})
+
+		fireEvent.click(screen.getByTestId("layered-tools-toggle"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updateCustomMode",
+			slug: "custom-mode",
+			modeConfig: { ...customMode, layeredTools: false, source: "global" },
+		})
 	})
 
 	it("opens the mode selection popover when the trigger is clicked", async () => {

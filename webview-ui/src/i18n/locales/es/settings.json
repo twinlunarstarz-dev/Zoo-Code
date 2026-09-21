@@ -922,6 +922,10 @@
 			"refreshSuccess": "Herramientas actualizadas correctamente",
 			"refreshError": "Error al actualizar las herramientas",
 			"toolParameters": "Parámetros"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Activar herramientas por capas",
+			"description": "En las tareas nuevas, muestra al modelo solo las herramientas de puerta de enlace de búsqueda, documentación y ejecución. Las herramientas integradas, MCP y personalizadas habilitadas siguen disponibles detrás de la puerta de enlace, lo que reduce el uso de contexto del prompt. Las tareas existentes conservan su protocolo de herramientas original."
 		}
 	},
 	"promptCaching": {

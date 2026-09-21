@@ -1002,6 +1002,22 @@
 			"refreshSuccess": "Tools refreshed successfully",
 			"refreshError": "Failed to refresh tools",
 			"toolParameters": "Parameters"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Enable layered tooling",
+			"description": "For new tasks, expose only search, documentation, and execute gateway tools to the model. Enabled built-in, MCP, and custom tools remain available behind the gateway, reducing prompt context usage. Existing tasks keep their original tool protocol."
+		},
+		"CHAT_HISTORY_LOOKUP": {
+			"name": "Enable chat history lookup",
+			"description": "Allow the model to semantically search past conversation logs stored in Roo's global storage. Results include the log location and matching line numbers."
+		},
+		"IMAGE_PROCESSING": {
+			"name": "Use a configured model to describe images",
+			"description": "Use a vision-capable configured provider profile to convert images into detailed text for models without built-in image support.",
+			"providerProfile": "Image processing provider profile",
+			"selectProvider": "Select a configured provider",
+			"prompt": "Image description instruction",
+			"promptHint": "Leave blank to use the detailed default instruction."
 		}
 	},
 	"promptCaching": {

@@ -155,6 +155,14 @@ export interface ExtensionStateContextType extends ExtensionState {
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
 
+export const shouldShowWelcomeForState = (
+	newState: Partial<ExtensionState>,
+	currentApiConfiguration: ProviderSettings,
+): boolean =>
+	newState.apiConfiguration === undefined
+		? !checkExistKey(currentApiConfiguration)
+		: !checkExistKey(newState.apiConfiguration)
+
 export const mergeExtensionState = (prevState: ExtensionState, newState: Partial<ExtensionState>) => {
 	const { customModePrompts: prevCustomModePrompts, experiments: prevExperiments, ...prevRest } = prevState
 
@@ -336,8 +344,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 			switch (message.type) {
 				case "state": {
 					const newState = message.state ?? {}
-					setState((prevState) => mergeExtensionState(prevState, newState))
-					setShowWelcome(!checkExistKey(newState.apiConfiguration))
+					setState((prevState) => {
+						if (newState.apiConfiguration !== undefined) {
+							setShowWelcome(shouldShowWelcomeForState(newState, prevState.apiConfiguration))
+						}
+						return mergeExtensionState(prevState, newState)
+					})
 					setDidHydrateState(true)
 					// Update alwaysAllowFollowupQuestions if present in state message
 					if ((newState as any).alwaysAllowFollowupQuestions !== undefined) {

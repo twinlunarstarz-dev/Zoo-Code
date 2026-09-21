@@ -281,6 +281,25 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			return result
 		}
 
+		const normalizeLayeredExecuteParameters = (schema: any): any => {
+			return {
+				type: "object",
+				properties: {
+					tool_id: {
+						type: "string",
+						description: "The exact stable tool ID returned by search.",
+					},
+					input: {
+						type: "string",
+						description:
+							'The target tool arguments as a JSON object serialized into a string. Use "{}" for a zero-argument tool.',
+					},
+				},
+				required: ["tool_id", "input"],
+				additionalProperties: false,
+			}
+		}
+
 		interface ResponsesRequestBody {
 			model: string
 			input: Array<{ role: "user" | "assistant"; content: any[] } | { type: string; content: string }>
@@ -327,9 +346,12 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 						type: "function",
 						name: tool.function.name,
 						description: tool.function.description,
-						parameters: isMcp
-							? ensureAdditionalPropertiesFalse(tool.function.parameters)
-							: ensureAllRequired(tool.function.parameters),
+						parameters:
+							tool.function.name === "execute"
+								? normalizeLayeredExecuteParameters(ensureAllRequired(tool.function.parameters))
+								: isMcp
+									? ensureAdditionalPropertiesFalse(tool.function.parameters)
+									: ensureAllRequired(tool.function.parameters),
 						strict: !isMcp,
 					}
 				}),

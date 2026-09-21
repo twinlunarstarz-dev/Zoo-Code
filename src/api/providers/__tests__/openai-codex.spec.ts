@@ -3,6 +3,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { OpenAiCodexHandler } from "../openai-codex"
 import { openAiCodexOAuthManager } from "../../../integrations/openai-codex/oauth"
+import { getLayeredTools } from "../../../core/prompts/tools/native-tools"
 
 describe("OpenAiCodexHandler.getModel", () => {
 	it.each(["gpt-5.1", "gpt-5", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5.3-codex-spark"])(
@@ -46,6 +47,114 @@ describe("OpenAiCodexHandler.getModel", () => {
 })
 
 describe("OpenAiCodexHandler.createMessage", () => {
+	it("sends layered gateway schemas with every property required", async () => {
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-5.6-sol" })
+
+		vitest.spyOn(openAiCodexOAuthManager, "getAccessToken").mockResolvedValue("test-token")
+		vitest.spyOn(openAiCodexOAuthManager, "getAccountId").mockResolvedValue("acct_test")
+
+		let capturedBody: any
+		;(handler as any).client = {
+			responses: {
+				create: vitest.fn().mockImplementation(async (body: any) => {
+					capturedBody = body
+					return {
+						async *[Symbol.asyncIterator]() {
+							yield {
+								type: "response.completed",
+								response: {
+									id: "r1",
+									status: "completed",
+									output: [],
+									usage: { input_tokens: 1, output_tokens: 1 },
+								},
+							}
+						},
+					}
+				}),
+			},
+		}
+
+		const stream = handler.createMessage("system", [{ role: "user", content: "Test tools" }], {
+			taskId: "layered-schema-test",
+			tools: getLayeredTools(),
+		})
+		for await (const _ of stream) {
+			// consume
+		}
+
+		expect(capturedBody.tools.map((tool: any) => tool.name)).toEqual(["search", "documentation", "execute"])
+		for (const tool of capturedBody.tools) {
+			expect(tool.strict).toBe(true)
+			expect(tool.parameters.required).toEqual(Object.keys(tool.parameters.properties))
+		}
+		expect(capturedBody.tools.find((tool: any) => tool.name === "execute").parameters).toMatchObject({
+			properties: { tool_id: { type: "string" }, input: { type: "string" } },
+			required: ["tool_id", "input"],
+		})
+	})
+
+	it("replaces stale execute schemas before sending them to Codex", async () => {
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-5.6-sol" })
+
+		vitest.spyOn(openAiCodexOAuthManager, "getAccessToken").mockResolvedValue("test-token")
+		vitest.spyOn(openAiCodexOAuthManager, "getAccountId").mockResolvedValue("acct_test")
+
+		let capturedBody: any
+		;(handler as any).client = {
+			responses: {
+				create: vitest.fn().mockImplementation(async (body: any) => {
+					capturedBody = body
+					return {
+						async *[Symbol.asyncIterator]() {
+							yield {
+								type: "response.completed",
+								response: { id: "r1", status: "completed", output: [] },
+							}
+						},
+					}
+				}),
+			},
+		}
+
+		const staleExecute = {
+			type: "function" as const,
+			function: {
+				name: "execute",
+				description: "stale",
+				parameters: {
+					type: "object",
+					properties: { tool_id: { type: "string" }, arguments: { type: "object" } },
+					required: ["tool_id", "arguments"],
+					additionalProperties: false,
+				},
+			},
+		}
+
+		const stream = handler.createMessage("system", [{ role: "user", content: "Test stale schema" }], {
+			taskId: "stale-schema-test",
+			tools: [staleExecute],
+		})
+		for await (const _ of stream) {
+			// consume
+		}
+
+		const execute = capturedBody.tools[0]
+		expect(execute.parameters).toEqual({
+			type: "object",
+			properties: {
+				tool_id: { type: "string", description: "The exact stable tool ID returned by search." },
+				input: {
+					type: "string",
+					description:
+						'The target tool arguments as a JSON object serialized into a string. Use "{}" for a zero-argument tool.',
+				},
+			},
+			required: ["tool_id", "input"],
+			additionalProperties: false,
+		})
+	})
+
 	it("should skip URL-sourced images in formatFullConversation (only base64 emits input_image)", async () => {
 		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-5.1-codex" })
 

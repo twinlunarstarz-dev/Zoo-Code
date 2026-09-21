@@ -133,6 +133,84 @@ interface ChatRowProps {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface ChatRowContentProps extends Omit<ChatRowProps, "onHeightChange"> {}
 
+const LayeredGatewayTool = ({ tool }: { tool: ClineSayTool }) => {
+	const [isExpanded, setIsExpanded] = useState(false)
+	const handleToggleExpand = useCallback(() => setIsExpanded((prev) => !prev), [])
+
+	const title =
+		tool.tool === "layeredSearch"
+			? "Layered search"
+			: tool.tool === "layeredDocumentation"
+				? "Layered documentation"
+				: "Layered execute"
+	const icon =
+		tool.tool === "layeredSearch"
+			? "codicon-search"
+			: tool.tool === "layeredDocumentation"
+				? "codicon-book"
+				: "codicon-play"
+
+	return (
+		<div className="pl-6">
+			<ToolUseBlock>
+				<ToolUseBlockHeader
+					className="group"
+					style={{
+						display: "flex",
+						flexDirection: "column",
+						alignItems: "flex-start",
+						gap: "4px",
+						padding: "10px 12px",
+					}}
+					onClick={handleToggleExpand}>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "8px",
+							width: "100%",
+						}}>
+						<span className={cn("codicon", icon)} style={{ fontSize: "var(--vscode-font-size)" }} />
+						<span style={{ fontWeight: "500", fontSize: "var(--vscode-font-size)" }}>{title}</span>
+					</div>
+					{tool.details && (
+						<div
+							style={{
+								color: "var(--vscode-descriptionForeground)",
+								fontSize: "calc(var(--vscode-font-size) - 1px)",
+							}}>
+							{tool.details}
+						</div>
+					)}
+					<span
+						className={`codicon codicon-chevron-${isExpanded ? "up" : "down"} opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+					/>
+				</ToolUseBlockHeader>
+				{isExpanded && tool.details && (
+					<div
+						style={{
+							padding: "12px 16px",
+							borderTop: "1px solid var(--vscode-editorGroup-border)",
+							display: "flex",
+							flexDirection: "column",
+							gap: "8px",
+						}}>
+						<div style={{ color: "var(--vscode-descriptionForeground)" }}>Details: {tool.details}</div>
+						{tool.toolId && (
+							<div>
+								<span style={{ fontWeight: "500" }}>Tool ID: </span>
+								<span style={{ color: "var(--vscode-descriptionForeground)", fontFamily: "monospace" }}>
+									{tool.toolId}
+								</span>
+							</div>
+						)}
+					</div>
+				)}
+			</ToolUseBlock>
+		</div>
+	)
+}
+
 const ChatRow = memo(
 	(props: ChatRowProps) => {
 		const { isLast, onHeightChange, message } = props
@@ -1421,6 +1499,11 @@ export const ChatRowContent = ({
 					if (!sayTool) return null
 
 					switch (sayTool.tool) {
+						case "layeredSearch":
+						case "layeredDocumentation":
+						case "layeredExecute": {
+							return <LayeredGatewayTool tool={sayTool} />
+						}
 						case "runSlashCommand": {
 							const slashCommandInfo = sayTool
 							return (

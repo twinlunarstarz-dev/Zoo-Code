@@ -239,6 +239,7 @@ vi.mock("../../task/Task", () => ({
 			setRootTask: vi.fn(),
 			taskId: options?.historyItem?.id || "test-task-id",
 			emit: vi.fn(),
+			waitForInitialization: vi.fn().mockResolvedValue(undefined),
 		}
 	}),
 }))
@@ -735,6 +736,37 @@ describe("ClineProvider", () => {
 		})
 	})
 
+	test("showTaskWithId waits for restored messages before opening chat", async () => {
+		const historyItem = {
+			id: "restored-task",
+			ts: Date.now(),
+			task: "Restored task",
+			number: 1,
+			tokensIn: 0,
+			tokensOut: 0,
+			totalCost: 0,
+		}
+		const order: string[] = []
+		const restoredTask = {
+			waitForInitialization: vi.fn(async () => {
+				order.push("initialized")
+			}),
+		}
+		vi.spyOn(provider, "getTaskWithId").mockResolvedValue({ historyItem } as any)
+		vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(restoredTask as any)
+		vi.spyOn(provider, "postStateToWebviewWithoutTaskHistory").mockImplementation(async () => {
+			order.push("state")
+		})
+		vi.spyOn(provider, "postMessageToWebview").mockImplementation(async (message) => {
+			if (message.type === "action") order.push("open")
+		})
+
+		await provider.showTaskWithId(historyItem.id)
+
+		expect(restoredTask.waitForInitialization).toHaveBeenCalledOnce()
+		expect(order).toEqual(["initialized", "state", "open"])
+	})
+
 	test("postMessageToWebview skips postMessage after dispose", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 
@@ -1066,6 +1098,29 @@ describe("ClineProvider", () => {
 		expect(updateGlobalStateSpy).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
 		expect(mockContext.globalState.update).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
 		expect(mockPostMessage).toHaveBeenCalled()
+	})
+
+	test("persists image processing and condensing override settings", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+
+		await messageHandler({
+			type: "updateSettings",
+			updatedSettings: {
+				imageProcessingEnabled: true,
+				imageProcessingApiConfigId: "vision-profile",
+				imageProcessingPrompt: "Describe every visible detail.",
+				condensingApiConfigOverride: true,
+				condensingApiConfigId: "condensing-profile",
+			},
+		})
+
+		const state = await provider.getState()
+		expect(state.imageProcessingEnabled).toBe(true)
+		expect(state.imageProcessingApiConfigId).toBe("vision-profile")
+		expect(state.imageProcessingPrompt).toBe("Describe every visible detail.")
+		expect(state.condensingApiConfigOverride).toBe(true)
+		expect(state.condensingApiConfigId).toBe("condensing-profile")
 	})
 
 	describe("auto-close settings are included in posted state", () => {

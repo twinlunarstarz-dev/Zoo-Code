@@ -1,4 +1,4 @@
-import type { ToolName, ModeConfig, ExperimentId, GroupOptions, GroupEntry } from "@roo-code/types"
+import type { ToolName, ModeConfig, ExperimentId, GroupOptions, GroupEntry, ToolProtocol } from "@roo-code/types"
 import { toolNames as validToolNames } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 
@@ -37,6 +37,7 @@ export function validateToolUse(
 	toolParams?: Record<string, unknown>,
 	experiments?: Record<string, boolean>,
 	includedTools?: string[],
+	toolProtocol?: ToolProtocol,
 ): void {
 	// First, check if the tool name is actually a valid/known tool
 	// This catches completely invalid tool names like "edit_file" that don't exist
@@ -56,6 +57,7 @@ export function validateToolUse(
 			toolParams,
 			experiments,
 			includedTools,
+			toolProtocol,
 		)
 	) {
 		throw new Error(`Tool "${toolName}" is not allowed in ${mode} mode.`)
@@ -125,6 +127,7 @@ export function isToolAllowedForMode(
 	toolParams?: Record<string, any>, // All tool parameters
 	experiments?: Record<string, boolean>,
 	includedTools?: string[], // Opt-in tools explicitly included (e.g., from modelInfo)
+	toolProtocol?: ToolProtocol,
 ): boolean {
 	// Resolve alias to canonical name (e.g., "search_and_replace" → "edit")
 	const resolvedTool = TOOL_ALIASES[tool] ?? tool
@@ -143,6 +146,19 @@ export function isToolAllowedForMode(
 	} else if (toolRequirements === false) {
 		// If toolRequirements is a boolean false, all tools are disabled
 		return false
+	}
+
+	const mode = getModeBySlug(modeSlug, customModes)
+
+	if (!mode) {
+		return false
+	}
+
+	// Gateway tools are the complete provider-visible surface for layered tasks. They default to
+	// enabled for backward compatibility, but can be disabled per mode. The registry behind execute
+	// remains independently mode-filtered, so enabling gateways never broadens target permissions.
+	if (toolProtocol === "layered" && ["search", "documentation", "execute"].includes(tool)) {
+		return mode.layeredTools !== false
 	}
 
 	// Always allow these tools (unless explicitly disabled above)
@@ -164,12 +180,6 @@ export function isToolAllowedForMode(
 		if (!experiments[tool]) {
 			return false
 		}
-	}
-
-	const mode = getModeBySlug(modeSlug, customModes)
-
-	if (!mode) {
-		return false
 	}
 
 	// Check if tool is in any of the mode's groups and respects any group options

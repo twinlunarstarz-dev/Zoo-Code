@@ -77,6 +77,7 @@ const ModesView = () => {
 		setCustomInstructions,
 		customModes,
 		mcpServers,
+		experiments,
 	} = useExtensionState()
 
 	// Use a local state to track the visually active mode
@@ -511,6 +512,21 @@ const ModesView = () => {
 				}
 			},
 		[updateCustomMode],
+	)
+
+	const handleLayeredToolsChange = useCallback(
+		(e: Event | React.FormEvent<HTMLElement>) => {
+			const target = (e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
+			const currentMode = getCurrentMode()
+			if (!currentMode) return
+
+			updateCustomMode(currentMode.slug, {
+				...currentMode,
+				layeredTools: target.checked,
+				source: currentMode.source || "global",
+			})
+		},
+		[getCurrentMode, updateCustomMode],
 	)
 
 	// Handle clicks outside the config menu
@@ -1147,6 +1163,19 @@ const ModesView = () => {
 						{!findModeBySlug(visualMode, customModes) && (
 							<div className="text-sm text-vscode-descriptionForeground mb-2">
 								{t("prompts:tools.builtInModesText")}
+							</div>
+						)}
+						{experiments?.layeredTooling && (
+							<div className="mb-2">
+								<VSCodeCheckbox
+									checked={getCurrentMode()?.layeredTools !== false}
+									onChange={handleLayeredToolsChange}
+									data-testid="layered-tools-toggle">
+									{t("prompts:tools.layeredTools")}
+								</VSCodeCheckbox>
+								<div className="text-xs text-vscode-descriptionForeground ml-6 mt-0.5">
+									{t("prompts:tools.layeredToolsDescription")}
+								</div>
 							</div>
 						)}
 						{isToolsEditMode && findModeBySlug(visualMode, customModes) ? (

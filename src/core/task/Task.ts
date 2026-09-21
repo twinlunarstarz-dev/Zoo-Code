@@ -33,6 +33,7 @@ import {
 	type ToolProgressStatus,
 	type HistoryItem,
 	type CreateTaskOptions,
+	type ToolProtocol,
 	type ModelInfo,
 	type ClineApiReqCancelReason,
 	type ClineApiReqInfo,
@@ -96,6 +97,7 @@ import { getTaskDirectoryPath } from "../../utils/storage"
 import { formatResponse } from "../prompts/responses"
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
+import type { LayeredToolRegistry } from "./layered-tools"
 
 // core modules
 import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
@@ -134,6 +136,7 @@ import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { prepareApiConversationMessage } from "./apiConversationHistory"
+import { enforceCondenseToolTurnIsolation, resolveEffectiveToolName } from "./toolTurnIsolation"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -167,6 +170,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly taskId: string
 	readonly rootTaskId?: string
 	readonly parentTaskId?: string
+	readonly toolProtocol: ToolProtocol
 	childTaskId?: string
 	pendingNewTaskToolCallId?: string
 
@@ -405,6 +409,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didToolFailInCurrentTurn = false
 	didCompleteReadingStream = false
 	private _started = false
+	private initializationPromise: Promise<void> = Promise.resolve()
+	/**
+	 * Image descriptions are generated for the request-only copy of history. Keep
+	 * them for the lifetime of the task so a later tool turn does not send the
+	 * same historical image back to the vision model again.
+	 */
+	private readonly imageDescriptionCache = new Map<string, string>()
 	// No streaming parser is required.
 	assistantMessageParser?: undefined
 	private providerProfileChangeListener?: (config: { name: string; provider?: string }) => void
@@ -447,6 +458,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		images,
 		historyItem,
 		experiments: experimentsConfig,
+		toolProtocol,
 		startTask = true,
 		rootTask,
 		parentTask,
@@ -481,6 +493,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.taskId = historyItem ? historyItem.id : (taskId ?? uuidv7())
 		this.rootTaskId = historyItem ? historyItem.rootTaskId : rootTask?.taskId
 		this.parentTaskId = historyItem ? historyItem.parentTaskId : parentTask?.taskId
+		this.toolProtocol = historyItem
+			? (historyItem.toolProtocol ?? "direct")
+			: (toolProtocol ?? (experimentsConfig?.layeredTooling ? "layered" : "direct"))
 		this.childTaskId = undefined
 
 		this.metadata = {
@@ -595,17 +610,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (startTask) {
 			this._started = true
 			if (task || images) {
-				void this.startTask(task, images).catch((error) => {
+				this.initializationPromise = this.startTask(task, images).catch((error) => {
 					console.error("[Task#constructor] startTask failed:", error)
 				})
 			} else if (historyItem) {
-				void this.resumeTaskFromHistory().catch((error) => {
+				this.initializationPromise = this.resumeTaskFromHistory().catch((error) => {
 					console.error("[Task#constructor] resumeTaskFromHistory failed:", error)
 				})
 			} else {
 				throw new Error("Either historyItem or task/images must be provided")
 			}
 		}
+	}
+
+	public waitForInitialization(): Promise<void> {
+		return this.initializationPromise
 	}
 
 	/**
@@ -1118,6 +1137,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				globalStoragePath: this.globalStoragePath,
 				workspace: this.cwd,
 				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
+				toolProtocol: this.toolProtocol,
 				apiConfigName: this._taskApiConfigName, // Use the task's own provider profile, not the current provider profile.
 				initialStatus: this.initialStatus,
 			})
@@ -1635,6 +1655,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				disabledTools: state?.disabledTools,
 				modelInfo,
 				includeAllToolsWithRestrictions: false,
+				toolProtocol: this.toolProtocol,
 			})
 			allTools = toolsResult.tools
 		}
@@ -1717,6 +1738,33 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Process any queued messages after condensing completes
 		this.processQueuedMessages()
+	}
+
+	public async buildAllowedLayeredToolRegistry(): Promise<LayeredToolRegistry> {
+		if (this.toolProtocol !== "layered") {
+			throw new Error("Layered tooling is not enabled for this task.")
+		}
+
+		const provider = this.providerRef.deref()
+		if (!provider) {
+			throw new Error("Provider reference lost while building the layered tool registry.")
+		}
+
+		const state = await provider.getState()
+		const toolsResult = await buildNativeToolsArrayWithRestrictions({
+			provider,
+			cwd: this.cwd,
+			mode: state?.mode,
+			customModes: state?.customModes,
+			experiments: state?.experiments,
+			apiConfiguration: state?.apiConfiguration,
+			disabledTools: state?.disabledTools,
+			modelInfo: this.api.getModel().info,
+			includeAllToolsWithRestrictions: false,
+			toolProtocol: this.toolProtocol,
+		})
+
+		return toolsResult.layeredRegistry
 	}
 
 	async say(
@@ -3510,8 +3558,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Enforce new_task isolation: if new_task is called alongside other tools,
 					// truncate any tools that come after it and inject error tool_results.
 					// This prevents orphaned tools when delegation disposes the parent task.
+					const layeredRegistry =
+						this.toolProtocol === "layered" ? await this.buildAllowedLayeredToolRegistry() : undefined
 					const newTaskIndex = assistantContent.findIndex(
-						(block) => block.type === "tool_use" && block.name === "new_task",
+						(block) => resolveEffectiveToolName(block, layeredRegistry) === "new_task",
 					)
 
 					if (newTaskIndex !== -1 && newTaskIndex < assistantContent.length - 1) {
@@ -3523,9 +3573,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// tools after new_task from being executed by presentAssistantMessage().
 						// Find new_task index in assistantMessageContent (may differ from assistantContent
 						// due to text blocks being structured differently).
-						const executionNewTaskIndex = this.assistantMessageContent.findIndex(
-							(block) => block.type === "tool_use" && block.name === "new_task",
-						)
+						const executionNewTaskIndex = this.assistantMessageContent.findIndex((block) => {
+							if (block.type !== "tool_use") return false
+							return (
+								resolveEffectiveToolName(
+									{
+										type: "tool_use",
+										id: block.id ?? "",
+										name: block.name,
+										input: block.nativeArgs ?? block.params,
+									},
+									layeredRegistry,
+								) === "new_task"
+							)
+						})
 						if (executionNewTaskIndex !== -1) {
 							this.assistantMessageContent.length = executionNewTaskIndex + 1
 						}
@@ -3541,6 +3602,36 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									is_error: true,
 								})
 							}
+						}
+					}
+
+					// Enforce request_condense_context isolation. If it is the first tool call,
+					// suppress every later tool before saving/executing the completed turn.
+					// A condensation call after an earlier tool is rejected during presentation,
+					// because streamed tools before it may already have executed.
+					const condenseIsolation = enforceCondenseToolTurnIsolation(assistantContent, layeredRegistry)
+					if (condenseIsolation.executionContent.length < assistantContent.length) {
+						// Keep sibling tool_use blocks in API history so the synthetic error
+						// tool_results have matching calls, but remove them from execution.
+						const executionCondenseIndex = this.assistantMessageContent.findIndex((block) => {
+							if (block.type !== "tool_use") return false
+							return (
+								resolveEffectiveToolName(
+									{
+										type: "tool_use",
+										id: block.id ?? "",
+										name: block.name,
+										input: block.nativeArgs ?? block.params,
+									},
+									layeredRegistry,
+								) === "request_condense_context"
+							)
+						})
+						if (executionCondenseIndex !== -1) {
+							this.assistantMessageContent.length = executionCondenseIndex + 1
+						}
+						for (const toolResult of condenseIsolation.injectedToolResults) {
+							this.pushToolResultToUserContent(toolResult)
 						}
 					}
 
@@ -3880,6 +3971,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				disabledTools: state?.disabledTools,
 				modelInfo,
 				includeAllToolsWithRestrictions: false,
+				toolProtocol: this.toolProtocol,
 			})
 			allTools = toolsResult.tools
 		}
@@ -4009,8 +4101,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	/**
 	 * Replaces image blocks with detailed descriptions from an explicitly selected
-	 * provider profile. This permits image context when the task model itself does
-	 * not advertise vision support, without changing the persisted conversation.
+	 * provider profile, including when the task model supports native vision. This
+	 * keeps image understanding on the configured profile without changing the
+	 * persisted conversation.
 	 */
 	private async describeImagesWithConfiguredModel(
 		messages: ApiMessage[],
@@ -4032,11 +4125,51 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			return messages
 		}
 
-		const hasImages = messages.some(
-			(message) => Array.isArray(message.content) && message.content.some((block) => block.type === "image"),
+		const getImageBlocks = (content: unknown): any[] => {
+			if (!Array.isArray(content)) return []
+
+			return content.flatMap((block) => {
+				if (block?.type === "image") return [block]
+				if (block?.type === "tool_result" && Array.isArray(block.content)) {
+					return getImageBlocks(block.content)
+				}
+				return []
+			})
+		}
+
+		let latestUserMessageIndex = -1
+		for (let index = messages.length - 1; index >= 0; index--) {
+			if (messages[index]?.role === "user") {
+				latestUserMessageIndex = index
+				break
+			}
+		}
+		const latestUserMessage = latestUserMessageIndex >= 0 ? messages[latestUserMessageIndex] : undefined
+		const currentTurnImageBlocks = getImageBlocks(latestUserMessage?.content)
+		const uncachedImageBlocks = currentTurnImageBlocks.filter(
+			(block) => !this.imageDescriptionCache.has(JSON.stringify(block)),
 		)
-		if (!hasImages) {
-			return messages
+		const replaceCachedImageBlocks = (content: any[]): any[] =>
+			content.map((block) => {
+				if (block.type === "tool_result" && Array.isArray(block.content)) {
+					return { ...block, content: replaceCachedImageBlocks(block.content) }
+				}
+				if (block.type !== "image") return block
+
+				const description = this.imageDescriptionCache.get(JSON.stringify(block))
+				return description ? { type: "text" as const, text: `[Image description]\n${description}` } : block
+			})
+
+		// Rebuild the request with cached descriptions without loading or calling
+		// the configured vision profile. Historical images are intentionally not
+		// eligible to trigger a new vision request: only images introduced by the
+		// current user/tool-result turn may invoke the configured image model.
+		if (uncachedImageBlocks.length === 0) {
+			return messages.map((message) =>
+				Array.isArray(message.content)
+					? { ...message, content: replaceCachedImageBlocks(message.content) }
+					: message,
+			)
 		}
 
 		try {
@@ -4050,39 +4183,50 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				state.imageProcessingPrompt?.trim() ||
 				"Describe this image in exhaustive, precise detail. Include all visible text, objects, layout, relationships, colors, context, and relevant visual details so your description can answer any possible question about the image."
 
-			return await Promise.all(
-				messages.map(async (message) => {
-					if (!Array.isArray(message.content) || !message.content.some((block) => block.type === "image")) {
+			const replaceImageBlocks = async (content: any[]): Promise<any[]> =>
+				Promise.all(
+					content.map(async (block) => {
+						if (block.type === "tool_result" && Array.isArray(block.content)) {
+							return { ...block, content: await replaceImageBlocks(block.content) }
+						}
+						if (block.type !== "image") return block
+
+						const cacheKey = JSON.stringify(block)
+						const cachedDescription = this.imageDescriptionCache.get(cacheKey)
+						if (cachedDescription) {
+							return { type: "text" as const, text: `[Image description]\n${cachedDescription}` }
+						}
+
+						let description = "[Referenced image in conversation]"
+						try {
+							const stream = imageProcessor.createMessage(
+								instruction,
+								[{ role: "user", content: [{ type: "text", text: instruction }, block] }],
+								{ taskId: this.taskId },
+							)
+							let response = ""
+							for await (const chunk of stream) {
+								if (chunk.type === "text") response += chunk.text
+							}
+							const generatedDescription = response.trim()
+							if (generatedDescription) {
+								description = generatedDescription
+								this.imageDescriptionCache.set(cacheKey, generatedDescription)
+							}
+						} catch (error) {
+							console.warn(`[Task] Failed to describe image with profile "${profileId}"`, error)
+						}
+
+						return { type: "text" as const, text: `[Image description]\n${description}` }
+					}),
+				)
+
+			return Promise.all(
+				messages.map(async (message, index) => {
+					if (index !== latestUserMessageIndex || !Array.isArray(message.content)) {
 						return message
 					}
-
-					const content = await Promise.all(
-						message.content.map(async (block) => {
-							if (block.type !== "image") {
-								return block
-							}
-
-							let description = "[Referenced image in conversation]"
-							try {
-								const stream = imageProcessor.createMessage(
-									instruction,
-									[{ role: "user", content: [{ type: "text", text: instruction }, block] }],
-									{ taskId: this.taskId },
-								)
-								let response = ""
-								for await (const chunk of stream) {
-									if (chunk.type === "text") response += chunk.text
-								}
-								description = response.trim() || description
-							} catch (error) {
-								console.warn(`[Task] Failed to describe image with profile "${profileId}"`, error)
-							}
-
-							return { type: "text" as const, text: `[Image description]\n${description}` }
-						}),
-					)
-
-					return { ...message, content }
+					return { ...message, content: await replaceImageBlocks(message.content) }
 				}),
 			)
 		} catch (error) {
@@ -4193,6 +4337,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						disabledTools: state?.disabledTools,
 						modelInfo,
 						includeAllToolsWithRestrictions: false,
+						toolProtocol: this.toolProtocol,
 					})
 					contextMgmtTools = toolsResult.tools
 				}
@@ -4365,6 +4510,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				disabledTools: state?.disabledTools,
 				modelInfo,
 				includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
+				toolProtocol: this.toolProtocol,
 			})
 			allTools = toolsResult.tools
 			allowedFunctionNames = toolsResult.allowedFunctionNames

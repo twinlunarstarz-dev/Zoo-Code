@@ -1,4 +1,5 @@
 import { HTMLAttributes } from "react"
+import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
 import type { Experiments, ImageGenerationProvider, ProviderSettingsEntry } from "@roo-code/types"
 
@@ -7,13 +8,14 @@ import { EXPERIMENT_IDS, experimentConfigsMap } from "@roo/experiments"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"
 
-import { SetExperimentEnabled } from "./types"
+import { SetCachedStateField, SetExperimentEnabled } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { ExperimentalFeature } from "./ExperimentalFeature"
-import { ImageGenerationSettings } from "./ImageGenerationSettings"
+import { ImageGenerationSettings, ImageProcessingSettings } from "./ImageGenerationSettings"
 import { CustomToolsSettings } from "./CustomToolsSettings"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 
 type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	experiments: Experiments
@@ -30,6 +32,9 @@ type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	imageProcessingApiConfigId?: string
 	imageProcessingPrompt?: string
 	listApiConfigMeta?: ProviderSettingsEntry[]
+	condensingApiConfigOverride?: boolean
+	condensingApiConfigId?: string
+	setCachedStateField?: SetCachedStateField<"condensingApiConfigOverride" | "condensingApiConfigId">
 	setImageGenerationProvider?: (provider: ImageGenerationProvider) => void
 	setOpenRouterImageApiKey?: (apiKey: string) => void
 	setImageGenerationSelectedModel?: (model: string) => void
@@ -56,6 +61,9 @@ export const ExperimentalSettings = ({
 	imageProcessingApiConfigId,
 	imageProcessingPrompt,
 	listApiConfigMeta,
+	condensingApiConfigOverride,
+	condensingApiConfigId,
+	setCachedStateField,
 	setImageGenerationProvider,
 	setOpenRouterImageApiKey,
 	setImageGenerationSelectedModel,
@@ -78,6 +86,7 @@ export const ExperimentalSettings = ({
 				{Object.entries(experimentConfigsMap)
 					.filter(([key]) => key in EXPERIMENT_IDS)
 					.filter(([, config]) => config.showInSettings !== false)
+					.filter(([key]) => key !== "CHAT_HISTORY_LOOKUP")
 					.map((config) => {
 						// Use the same translation key pattern as ExperimentalFeature
 						const experimentKey = config[0]
@@ -131,6 +140,7 @@ export const ExperimentalSettings = ({
 										setImageProcessingEnabled={setImageProcessingEnabled}
 										setImageProcessingApiConfigId={setImageProcessingApiConfigId}
 										setImageProcessingPrompt={setImageProcessingPrompt}
+										showImageProcessingSettings={false}
 									/>
 								</SearchableSetting>
 							)
@@ -172,6 +182,86 @@ export const ExperimentalSettings = ({
 							</SearchableSetting>
 						)
 					})}
+
+				<SearchableSetting
+					settingId="experimental-chat-history-lookup"
+					section="experimental"
+					label={t("settings:experimental.CHAT_HISTORY_LOOKUP.name")}>
+					<ExperimentalFeature
+						experimentKey="CHAT_HISTORY_LOOKUP"
+						enabled={experiments[EXPERIMENT_IDS.CHAT_HISTORY_LOOKUP] ?? false}
+						onChange={(enabled) => setExperimentEnabled(EXPERIMENT_IDS.CHAT_HISTORY_LOOKUP, enabled)}
+					/>
+				</SearchableSetting>
+
+				{setImageProcessingEnabled && setImageProcessingApiConfigId && setImageProcessingPrompt && (
+					<SearchableSetting
+						settingId="experimental-image-processing"
+						section="experimental"
+						label={t("settings:experimental.IMAGE_PROCESSING.name")}>
+						<ImageProcessingSettings
+							imageProcessingEnabled={imageProcessingEnabled}
+							imageProcessingApiConfigId={imageProcessingApiConfigId}
+							imageProcessingPrompt={imageProcessingPrompt}
+							listApiConfigMeta={listApiConfigMeta ?? []}
+							setImageProcessingEnabled={setImageProcessingEnabled}
+							setImageProcessingApiConfigId={setImageProcessingApiConfigId}
+							setImageProcessingPrompt={setImageProcessingPrompt}
+						/>
+					</SearchableSetting>
+				)}
+
+				{setCachedStateField && (
+					<SearchableSetting
+						settingId="experimental-context-condensing-model-override"
+						section="experimental"
+						label={t("settings:contextManagement.condensingApiConfiguration.label")}>
+						<div>
+							<VSCodeCheckbox
+								checked={condensingApiConfigOverride ?? false}
+								onChange={(e: any) =>
+									setCachedStateField("condensingApiConfigOverride", e.target.checked)
+								}
+								data-testid="condensing-model-override-checkbox">
+								<span className="font-medium">
+									{t("settings:contextManagement.condensingApiConfiguration.label")}
+								</span>
+							</VSCodeCheckbox>
+							<div className="text-vscode-descriptionForeground text-sm mt-1">
+								{t("settings:contextManagement.condensingApiConfiguration.description")}
+							</div>
+							{condensingApiConfigOverride && (
+								<div className="mt-3">
+									<Select
+										value={condensingApiConfigId || "current-mode"}
+										onValueChange={(value) =>
+											setCachedStateField(
+												"condensingApiConfigId",
+												value === "current-mode" ? "" : value,
+											)
+										}
+										data-testid="condensing-profile-select">
+										<SelectTrigger className="w-full">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="current-mode">
+												{t(
+													"settings:contextManagement.condensingApiConfiguration.useCurrentConfig",
+												)}
+											</SelectItem>
+											{(listApiConfigMeta ?? []).map((config) => (
+												<SelectItem key={config.id} value={config.id}>
+													{config.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							)}
+						</div>
+					</SearchableSetting>
+				)}
 			</Section>
 		</div>
 	)

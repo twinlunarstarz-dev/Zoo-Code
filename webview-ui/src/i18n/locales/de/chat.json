@@ -17,7 +17,8 @@
 		"condenseContext": "Kontext intelligent komprimieren",
 		"openApiHistory": "API-Verlauf öffnen",
 		"openUiHistory": "UI-Verlauf öffnen",
-		"backToParentTask": "Übergeordnete Aufgabe"
+		"backToParentTask": "Übergeordnete Aufgabe",
+		"layeredTooling": "Layered Tooling"
 	},
 	"unpin": "Lösen von oben",
 	"pin": "Anheften",

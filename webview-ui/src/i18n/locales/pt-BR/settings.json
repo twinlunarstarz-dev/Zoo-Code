@@ -922,6 +922,10 @@
 			"refreshSuccess": "Ferramentas atualizadas com sucesso",
 			"refreshError": "Falha ao atualizar ferramentas",
 			"toolParameters": "Parâmetros"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Ativar ferramentas em camadas",
+			"description": "Para novas tarefas, mostra ao modelo apenas as ferramentas de gateway de pesquisa, documentação e execução. As ferramentas integradas, MCP e personalizadas ativadas continuam disponíveis por trás do gateway, reduzindo o uso do contexto do prompt. As tarefas existentes mantêm seu protocolo de ferramentas original."
 		}
 	},
 	"promptCaching": {

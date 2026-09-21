@@ -285,6 +285,10 @@ export function filterNativeToolsForMode(
 		allowedToolNames.delete("update_todo_list")
 	}
 
+	if (!experiments?.chatHistoryLookup) {
+		allowedToolNames.delete("chat_history_lookup")
+	}
+
 	// Conditionally exclude generate_image if experiment is not enabled
 	if (!experiments?.imageGeneration) {
 		allowedToolNames.delete("generate_image")
@@ -395,6 +399,9 @@ export function isToolAllowedInMode(
 		}
 		if (toolName === "run_slash_command") {
 			return experiments?.runSlashCommand === true
+		}
+		if (toolName === "chat_history_lookup") {
+			return experiments?.chatHistoryLookup === true
 		}
 		return true
 	}

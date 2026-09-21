@@ -108,6 +108,18 @@ describe("TaskHeader", () => {
 		)
 	}
 
+	it("shows the layered tooling badge only for layered tasks", () => {
+		const { rerender } = renderTaskHeader({ toolProtocol: "layered" })
+		expect(screen.getByTestId("layered-tooling-badge")).toHaveTextContent("chat:task.layeredTooling")
+
+		rerender(
+			<QueryClientProvider client={queryClient}>
+				<TaskHeader {...defaultProps} toolProtocol="direct" />
+			</QueryClientProvider>,
+		)
+		expect(screen.queryByTestId("layered-tooling-badge")).not.toBeInTheDocument()
+	})
+
 	it("should display cost when totalCost is greater than 0", () => {
 		renderTaskHeader()
 		expect(screen.getByText("$0.05")).toBeInTheDocument()

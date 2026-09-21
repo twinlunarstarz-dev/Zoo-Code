@@ -922,6 +922,10 @@
 			"refreshSuccess": "도구가 성공적으로 새로고침되었습니다",
 			"refreshError": "도구 새로고침에 실패했습니다",
 			"toolParameters": "매개변수"
+		},
+		"LAYERED_TOOLING": {
+			"name": "계층형 도구 활성화",
+			"description": "새 작업에서는 검색, 문서, 실행 게이트웨이 도구만 모델에 표시합니다. 활성화된 기본 제공, MCP, 사용자 정의 도구는 게이트웨이 뒤에서 계속 사용할 수 있어 Prompt 컨텍스트 사용량을 줄입니다. 기존 작업은 원래 도구 프로토콜을 유지합니다."
 		}
 	},
 	"promptCaching": {

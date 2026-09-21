@@ -22,6 +22,8 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				layeredTooling: false,
+				chatHistoryLookup: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(false)
 		})
@@ -33,6 +35,8 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				layeredTooling: false,
+				chatHistoryLookup: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(true)
 		})
@@ -44,6 +48,8 @@ describe("experiments", () => {
 				runSlashCommand: false,
 				customTools: false,
 				parallelToolExecution: false,
+				layeredTooling: false,
+				chatHistoryLookup: false,
 			}
 			expect(Experiments.isEnabled(experiments, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)).toBe(false)
 		})
@@ -64,6 +70,18 @@ describe("experiments", () => {
 
 		it("returns true when enabled", () => {
 			expect(Experiments.isEnabled({ parallelToolExecution: true }, "parallelToolExecution")).toBe(true)
+		})
+	})
+
+	describe("LAYERED_TOOLING", () => {
+		it("is visible and disabled by default", () => {
+			expect(EXPERIMENT_IDS.LAYERED_TOOLING).toBe("layeredTooling")
+			expect(experimentConfigsMap.LAYERED_TOOLING).toEqual({ enabled: false })
+			expect(Experiments.isEnabled({}, "layeredTooling")).toBe(false)
+		})
+
+		it("returns true when enabled", () => {
+			expect(Experiments.isEnabled({ layeredTooling: true }, "layeredTooling")).toBe(true)
 		})
 	})
 })

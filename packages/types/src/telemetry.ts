@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { providerNames } from "./provider-settings.js"
 import { clineMessageSchema } from "./message.js"
+import { toolProtocolSchema } from "./task.js"
 
 /**
  * TelemetrySetting
@@ -120,6 +121,7 @@ export const taskPropertiesSchema = z.object({
 	modelId: z.string().optional(),
 	diffStrategy: z.string().optional(),
 	isSubtask: z.boolean().optional(),
+	toolProtocol: toolProtocolSchema.optional(),
 	todos: z
 		.object({
 			total: z.number(),

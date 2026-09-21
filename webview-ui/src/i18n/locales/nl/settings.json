@@ -922,6 +922,10 @@
 			"refreshSuccess": "Tools succesvol vernieuwd",
 			"refreshError": "Fout bij vernieuwen van tools",
 			"toolParameters": "Parameters"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Gelaagde tools inschakelen",
+			"description": "Voor nieuwe taken krijgt het model alleen de gateway-tools voor zoeken, documentatie en uitvoeren te zien. Ingeschakelde ingebouwde, MCP- en aangepaste tools blijven achter de gateway beschikbaar, waardoor minder promptcontext wordt gebruikt. Bestaande taken behouden hun oorspronkelijke toolprotocol."
 		}
 	},
 	"promptCaching": {

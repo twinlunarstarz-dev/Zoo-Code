@@ -922,6 +922,10 @@
 			"refreshSuccess": "工具刷新成功",
 			"refreshError": "工具刷新失败",
 			"toolParameters": "参数"
+		},
+		"LAYERED_TOOLING": {
+			"name": "启用分层工具",
+			"description": "对于新任务，仅向模型公开搜索、文档和执行网关工具。已启用的内置、MCP 和自定义工具仍可通过网关使用，从而减少 Prompt 上下文占用。现有任务保留其原始工具协议。"
 		}
 	},
 	"promptCaching": {

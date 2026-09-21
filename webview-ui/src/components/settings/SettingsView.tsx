@@ -494,6 +494,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					imageGenerationProvider,
 					openRouterImageApiKey,
 					openRouterImageGenerationSelectedModel,
+					openAiCompatibleImageGenerationBaseUrl,
+					openAiCompatibleImageGenerationApiKey,
+					openAiCompatibleImageGenerationModel,
+					imageProcessingEnabled,
+					imageProcessingApiConfigId,
+					imageProcessingPrompt,
 					experiments,
 					customSupportPrompts,
 				},
@@ -908,8 +914,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							<ContextManagementSettings
 								autoCondenseContext={autoCondenseContext}
 								autoCondenseContextPercent={autoCondenseContextPercent}
-								condensingApiConfigOverride={condensingApiConfigOverride ?? false}
-								condensingApiConfigId={condensingApiConfigId}
 								listApiConfigMeta={listApiConfigMeta ?? []}
 								maxOpenTabsContext={maxOpenTabsContext}
 								maxWorkspaceFiles={maxWorkspaceFiles ?? 200}
@@ -1011,6 +1015,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								imageProcessingApiConfigId={imageProcessingApiConfigId as string | undefined}
 								imageProcessingPrompt={imageProcessingPrompt as string | undefined}
 								listApiConfigMeta={listApiConfigMeta}
+								condensingApiConfigOverride={condensingApiConfigOverride ?? false}
+								condensingApiConfigId={condensingApiConfigId}
+								setCachedStateField={setCachedStateField}
 								setOpenAiCompatibleImageGenerationBaseUrl={setOpenAiCompatibleImageGenerationBaseUrl}
 								setOpenAiCompatibleImageGenerationApiKey={setOpenAiCompatibleImageGenerationApiKey}
 								setOpenAiCompatibleImageGenerationModel={setOpenAiCompatibleImageGenerationModel}

@@ -6,6 +6,8 @@ export const EXPERIMENT_IDS = {
 	RUN_SLASH_COMMAND: "runSlashCommand",
 	CUSTOM_TOOLS: "customTools",
 	PARALLEL_TOOL_EXECUTION: "parallelToolExecution",
+	LAYERED_TOOLING: "layeredTooling",
+	CHAT_HISTORY_LOOKUP: "chatHistoryLookup",
 } as const satisfies Record<string, ExperimentId>
 
 type _AssertExperimentIds = AssertEqual<Equals<ExperimentId, Values<typeof EXPERIMENT_IDS>>>
@@ -25,6 +27,8 @@ export const experimentConfigsMap: Record<ExperimentKey, ExperimentConfig> = {
 	CUSTOM_TOOLS: { enabled: false },
 	// TODO: add i18n keys (settings:experimental.PARALLEL_TOOL_EXECUTION.name/.description) in the same PR that sets showInSettings: true
 	PARALLEL_TOOL_EXECUTION: { enabled: false, showInSettings: false },
+	LAYERED_TOOLING: { enabled: false },
+	CHAT_HISTORY_LOOKUP: { enabled: false },
 }
 
 export const experimentDefault = Object.fromEntries(

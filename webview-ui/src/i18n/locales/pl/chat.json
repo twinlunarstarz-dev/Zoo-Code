@@ -17,7 +17,8 @@
 		"condenseContext": "Inteligentnie skondensuj kontekst",
 		"openApiHistory": "Otwórz historię API",
 		"openUiHistory": "Otwórz historię UI",
-		"backToParentTask": "Zadanie nadrzędne"
+		"backToParentTask": "Zadanie nadrzędne",
+		"layeredTooling": "Narzędzia warstwowe"
 	},
 	"unpin": "Odepnij",
 	"pin": "Przypnij",

@@ -922,6 +922,10 @@
 			"refreshSuccess": "Eines actualitzades correctament",
 			"refreshError": "Error en actualitzar les eines",
 			"toolParameters": "Paràmetres"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Activa les eines en capes",
+			"description": "Per a les tasques noves, mostra al model només les eines de passarel·la de cerca, documentació i execució. Les eines integrades, MCP i personalitzades habilitades continuen disponibles darrere de la passarel·la, reduint l'ús de context del prompt. Les tasques existents mantenen el seu protocol d'eines original."
 		}
 	},
 	"promptCaching": {

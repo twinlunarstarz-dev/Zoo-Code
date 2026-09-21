@@ -575,6 +575,163 @@ describe("Cline", () => {
 				])
 			})
 
+			it("should not invoke the configured image processor for a tool result without images", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: {
+						...mockApiConfig,
+						apiModelId: "qwen3.8",
+					},
+					task: "test task",
+					startTask: false,
+				})
+				vi.spyOn(task as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(task.api, "getModel").mockReturnValue({
+					id: "qwen3.8",
+					info: {
+						supportsImages: false,
+						supportsPromptCache: false,
+						contextWindow: 16000,
+						maxTokens: 2048,
+						inputPrice: 0.1,
+						outputPrice: 0.2,
+					} as ModelInfo,
+				})
+
+				const providerState = await mockProvider.getState()
+				vi.spyOn(mockProvider, "getState").mockResolvedValue({
+					...providerState,
+					imageProcessingEnabled: true,
+					imageProcessingApiConfigId: "vision-profile",
+					listApiConfigMeta: [{ id: "vision-profile" }],
+				})
+				const getProfileSpy = vi.spyOn(mockProvider.providerSettingsManager, "getProfile")
+				const createMessageSpy = vi.spyOn(task.api, "createMessage").mockReturnValue({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "text", text: "response" }
+					},
+				} as AsyncGenerator<ApiStreamChunk>)
+				task.apiConversationHistory = [
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: "Here is an earlier image" },
+							{
+								type: "image",
+								source: { type: "base64", media_type: "image/png", data: "earlier-image" },
+							},
+						],
+					},
+					{
+						role: "assistant",
+						content: [{ type: "text", text: "I will inspect the image." }],
+					},
+					{
+						role: "assistant",
+						content: [{ type: "tool_use", id: "tool-1", name: "read_file", input: {} }],
+					},
+					{
+						role: "user",
+						content: [{ type: "tool_result", tool_use_id: "tool-1", content: "file contents" }],
+					},
+				] as any
+
+				const iterator = task.attemptApiRequest(0)
+				await iterator.next()
+
+				expect(getProfileSpy).not.toHaveBeenCalled()
+				const [, requestHistory] = createMessageSpy.mock.calls[0]!
+				expect(requestHistory).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							content: [{ type: "tool_result", tool_use_id: "tool-1", content: "file contents" }],
+						}),
+					]),
+				)
+			})
+
+			it("should use the configured image processor even when the task model supports images", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: {
+						...mockApiConfig,
+						apiModelId: "claude-3-sonnet",
+					},
+					task: "test task",
+					startTask: false,
+				})
+				vi.spyOn(task as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(task.api, "getModel").mockReturnValue({
+					id: "claude-3-sonnet",
+					info: {
+						supportsImages: true,
+						supportsPromptCache: true,
+						contextWindow: 200000,
+						maxTokens: 4096,
+						inputPrice: 0.25,
+						outputPrice: 0.75,
+					} as ModelInfo,
+				})
+
+				const providerState = await mockProvider.getState()
+				vi.spyOn(mockProvider, "getState").mockResolvedValue({
+					...providerState,
+					imageProcessingEnabled: true,
+					imageProcessingApiConfigId: "vision-profile",
+					listApiConfigMeta: [{ id: "vision-profile" }],
+				})
+				vi.spyOn(mockProvider.providerSettingsManager, "getProfile").mockResolvedValue({
+					apiProvider: "anthropic",
+					apiModelId: "vision-model",
+					apiKey: "vision-api-key",
+				} as any)
+
+				const imageProcessorStream = {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "text", text: "configured image description" }
+					},
+				} as AsyncGenerator<ApiStreamChunk>
+				const createMessageSpy = vi.spyOn(task.api, "createMessage").mockReturnValue({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "text", text: "response" }
+					},
+				} as AsyncGenerator<ApiStreamChunk>)
+				const imageProcessor = (await import("../../../api")) as any
+				const buildApiHandlerSpy = vi
+					.spyOn(imageProcessor, "buildApiHandler")
+					.mockReturnValue({ createMessage: vi.fn().mockReturnValue(imageProcessorStream) })
+
+				task.apiConversationHistory = [
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: "Describe this image" },
+							{
+								type: "image",
+								source: { type: "base64", media_type: "image/png", data: "current-image" },
+							},
+						],
+					},
+				] as any
+
+				const iterator = task.attemptApiRequest(0)
+				await iterator.next()
+
+				expect(buildApiHandlerSpy).toHaveBeenCalledWith(expect.objectContaining({ apiModelId: "vision-model" }))
+				expect(createMessageSpy).toHaveBeenCalled()
+				const [, requestHistory] = createMessageSpy.mock.calls[0]!
+				expect(requestHistory).toEqual([
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: "Describe this image" },
+							{ type: "text", text: "[Image description]\nconfigured image description" },
+						],
+					},
+				])
+				buildApiHandlerSpy.mockRestore()
+			})
+
 			it("should handle API retry with countdown", async () => {
 				const cline = new Task({
 					provider: mockProvider,

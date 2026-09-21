@@ -922,6 +922,10 @@
 			"refreshSuccess": "Tool berhasil direfresh",
 			"refreshError": "Gagal merefresh tool",
 			"toolParameters": "Parameter"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Aktifkan layered tooling",
+			"description": "Untuk task baru, tampilkan hanya tool gateway pencarian, dokumentasi, dan eksekusi kepada model. Tool bawaan, MCP, dan kustom yang aktif tetap tersedia di balik gateway sehingga penggunaan konteks prompt berkurang. Task yang sudah ada tetap memakai protokol tool aslinya."
 		}
 	},
 	"promptCaching": {

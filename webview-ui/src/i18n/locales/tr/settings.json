@@ -922,6 +922,10 @@
 			"refreshSuccess": "Araçlar başarıyla yenilendi",
 			"refreshError": "Araçlar yenilenemedi",
 			"toolParameters": "Parametreler"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Katmanlı araçları etkinleştir",
+			"description": "Yeni görevlerde modele yalnızca arama, dokümantasyon ve yürütme ağ geçidi araçlarını gösterir. Etkin yerleşik, MCP ve özel araçlar ağ geçidinin arkasında kullanılabilir kalır ve Prompt bağlamı kullanımını azaltır. Mevcut görevler özgün araç protokollerini korur."
 		}
 	},
 	"promptCaching": {

@@ -1974,7 +1974,9 @@ export class ClineProvider
 		if (id !== this.getCurrentTask()?.taskId) {
 			// Non-current task.
 			const { historyItem } = await this.getTaskWithId(id)
-			await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
+			const task = await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
+			await task.waitForInitialization()
+			await this.postStateToWebviewWithoutTaskHistory()
 		}
 
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
@@ -3481,6 +3483,7 @@ export class ClineProvider
 			modelId: task?.api?.getModel().id,
 			diffStrategy: task?.diffStrategy?.getName(),
 			isSubtask: task ? !!task.parentTaskId : undefined,
+			toolProtocol: task?.toolProtocol,
 			...(todos && { todos }),
 		}
 	}

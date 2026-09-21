@@ -28,7 +28,9 @@
 			"command": "명령 실행",
 			"mcp": "MCP 사용"
 		},
-		"noTools": "없음"
+		"noTools": "없음",
+		"layeredTools": "Layered tools (Search, Documentation, Execute)",
+		"layeredToolsDescription": "Allow this mode to use the three gateway tools when Layered Tooling is enabled. The native, MCP, and custom tools selected below remain the only targets available behind the gateways."
 	},
 	"roleDefinition": {
 		"title": "역할 정의",

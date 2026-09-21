@@ -922,6 +922,10 @@
 			"refreshSuccess": "Làm mới công cụ thành công",
 			"refreshError": "Không thể làm mới công cụ",
 			"toolParameters": "Thông số"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Bật công cụ phân lớp",
+			"description": "Với tác vụ mới, chỉ hiển thị cho mô hình các công cụ cổng tìm kiếm, tài liệu và thực thi. Các công cụ tích hợp, MCP và tùy chỉnh đã bật vẫn có thể dùng phía sau cổng, giúp giảm lượng ngữ cảnh Prompt. Tác vụ hiện có giữ nguyên giao thức công cụ ban đầu."
 		}
 	},
 	"promptCaching": {

@@ -949,6 +949,10 @@
 			"refreshSuccess": "工具重新整理成功",
 			"refreshError": "工具重新整理失敗",
 			"toolParameters": "參數"
+		},
+		"LAYERED_TOOLING": {
+			"name": "啟用分層工具",
+			"description": "對於新任務，僅向模型公開搜尋、文件和執行閘道工具。已啟用的內建、MCP 和自訂工具仍可透過閘道使用，藉此減少 Prompt 上下文用量。現有任務會保留原始工具協定。"
 		}
 	},
 	"promptCaching": {

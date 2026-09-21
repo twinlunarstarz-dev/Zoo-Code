@@ -922,6 +922,10 @@
 			"refreshSuccess": "Strumenti aggiornati con successo",
 			"refreshError": "Impossibile aggiornare gli strumenti",
 			"toolParameters": "Parametri"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Abilita strumenti a livelli",
+			"description": "Per le nuove attività, mostra al modello solo gli strumenti gateway di ricerca, documentazione ed esecuzione. Gli strumenti integrati, MCP e personalizzati abilitati restano disponibili dietro il gateway, riducendo l'uso del contesto del prompt. Le attività esistenti mantengono il protocollo degli strumenti originale."
 		}
 	},
 	"promptCaching": {

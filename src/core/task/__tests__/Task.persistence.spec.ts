@@ -368,6 +368,58 @@ describe("Task persistence", () => {
 	// ── saveClineMessages ────────────────────────────────────────────────
 
 	describe("saveClineMessages", () => {
+		it.each<{ experiments: Record<string, boolean>; expected: "direct" | "layered" }>([
+			{ experiments: {}, expected: "direct" },
+			{ experiments: { layeredTooling: true }, expected: "layered" },
+		])("snapshots $expected protocol for a new task", ({ experiments, expected }) => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+				experiments,
+			})
+
+			expect(task.toolProtocol).toBe(expected)
+		})
+
+		it("prefers an explicit task protocol over the experiment snapshot", () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+				experiments: { layeredTooling: false },
+				toolProtocol: "layered",
+			})
+
+			expect(task.toolProtocol).toBe("layered")
+		})
+
+		it.each([
+			{ persisted: "layered", expected: "layered" },
+			{ persisted: undefined, expected: "direct" },
+		] as const)("restores $expected protocol from history", ({ persisted, expected }) => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				historyItem: {
+					id: "history-task",
+					number: 1,
+					ts: Date.now(),
+					task: "history task",
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
+					...(persisted ? { toolProtocol: persisted } : {}),
+				},
+				startTask: false,
+				experiments: { layeredTooling: true },
+			})
+
+			expect(task.toolProtocol).toBe(expected)
+		})
+
 		it("returns true on success", async () => {
 			mockSaveTaskMessages.mockResolvedValueOnce(undefined)
 
@@ -422,6 +474,24 @@ describe("Task persistence", () => {
 			expect(callArgs.messages).not.toBe(task.clineMessages)
 			// But the content should be the same
 			expect(callArgs.messages).toEqual(task.clineMessages)
+		})
+
+		it("passes the immutable protocol to history metadata", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+				experiments: { layeredTooling: true },
+			})
+
+			await (task as Record<string, any>).saveClineMessages()
+
+			expect(mockTaskMetadata).toHaveBeenCalledWith(
+				expect.objectContaining({
+					toolProtocol: "layered",
+				}),
+			)
 		})
 
 		it("preserves an existing lifecycle status during metadata saves", async () => {

@@ -36,6 +36,7 @@ interface ImageGenerationSettingsProps {
 	setImageProcessingEnabled: (value: boolean) => void
 	setImageProcessingApiConfigId: (value: string) => void
 	setImageProcessingPrompt: (value: string) => void
+	showImageProcessingSettings?: boolean
 }
 
 const DEFAULT_IMAGE_DESCRIPTION_PROMPT =
@@ -63,6 +64,7 @@ export const ImageGenerationSettings = ({
 	setImageProcessingEnabled,
 	setImageProcessingApiConfigId,
 	setImageProcessingPrompt,
+	showImageProcessingSettings = true,
 }: ImageGenerationSettingsProps) => {
 	const { t } = useAppTranslation()
 	const currentProvider = getImageGenerationProvider(
@@ -186,49 +188,90 @@ export const ImageGenerationSettings = ({
 				</div>
 			)}
 
-			<div className="border-t border-vscode-widget-border pt-4">
-				<VSCodeCheckbox
-					checked={imageProcessingEnabled ?? false}
-					onChange={(e: any) => setImageProcessingEnabled(e.target.checked)}>
-					<span className="font-medium">Use a configured model to describe images</span>
-				</VSCodeCheckbox>
-				<p className="text-vscode-descriptionForeground text-sm mt-1">
-					Use a vision-capable configured provider profile to convert images into detailed text for models
-					without built-in image support.
-				</p>
-				{imageProcessingEnabled && (
-					<div className="ml-2 mt-3 space-y-3">
-						<div>
-							<label className="block font-medium mb-1">Image processing provider profile</label>
-							<VSCodeDropdown
-								value={imageProcessingApiConfigId ?? ""}
-								onChange={(e: any) => setImageProcessingApiConfigId(e.target.value)}
-								className="w-full">
-								<VSCodeOption value="">Select a configured provider</VSCodeOption>
-								{listApiConfigMeta.map((profile) => (
-									<VSCodeOption key={profile.id} value={profile.id}>
-										{profile.name}
-										{profile.modelId ? ` (${profile.modelId})` : ""}
-									</VSCodeOption>
-								))}
-							</VSCodeDropdown>
-						</div>
-						<div>
-							<label className="block font-medium mb-1">Image description instruction</label>
-							<VSCodeTextArea
-								value={imageProcessingPrompt ?? ""}
-								onInput={(e: any) => setImageProcessingPrompt(e.target.value)}
-								placeholder={DEFAULT_IMAGE_DESCRIPTION_PROMPT}
-								className="w-full"
-								rows={5}
-							/>
-							<p className="text-vscode-descriptionForeground text-xs mt-1">
-								Leave blank to use the detailed default instruction.
-							</p>
-						</div>
+			{showImageProcessingSettings && (
+				<ImageProcessingSettings
+					imageProcessingEnabled={imageProcessingEnabled}
+					imageProcessingApiConfigId={imageProcessingApiConfigId}
+					imageProcessingPrompt={imageProcessingPrompt}
+					listApiConfigMeta={listApiConfigMeta}
+					setImageProcessingEnabled={setImageProcessingEnabled}
+					setImageProcessingApiConfigId={setImageProcessingApiConfigId}
+					setImageProcessingPrompt={setImageProcessingPrompt}
+				/>
+			)}
+		</div>
+	)
+}
+
+export interface ImageProcessingSettingsProps {
+	imageProcessingEnabled?: boolean
+	imageProcessingApiConfigId?: string
+	imageProcessingPrompt?: string
+	listApiConfigMeta: ProviderSettingsEntry[]
+	setImageProcessingEnabled: (value: boolean) => void
+	setImageProcessingApiConfigId: (value: string) => void
+	setImageProcessingPrompt: (value: string) => void
+}
+
+export const ImageProcessingSettings = ({
+	imageProcessingEnabled,
+	imageProcessingApiConfigId,
+	imageProcessingPrompt,
+	listApiConfigMeta,
+	setImageProcessingEnabled,
+	setImageProcessingApiConfigId,
+	setImageProcessingPrompt,
+}: ImageProcessingSettingsProps) => {
+	const { t } = useAppTranslation()
+
+	return (
+		<div className="border-t border-vscode-widget-border pt-4">
+			<VSCodeCheckbox
+				checked={imageProcessingEnabled ?? false}
+				onChange={(e: any) => setImageProcessingEnabled(e.target.checked)}>
+				<span className="font-medium">{t("settings:experimental.IMAGE_PROCESSING.name")}</span>
+			</VSCodeCheckbox>
+			<p className="text-vscode-descriptionForeground text-sm mt-1">
+				{t("settings:experimental.IMAGE_PROCESSING.description")}
+			</p>
+			{imageProcessingEnabled && (
+				<div className="ml-2 mt-3 space-y-3">
+					<div>
+						<label className="block font-medium mb-1">
+							{t("settings:experimental.IMAGE_PROCESSING.providerProfile")}
+						</label>
+						<VSCodeDropdown
+							value={imageProcessingApiConfigId ?? ""}
+							onChange={(e: any) => setImageProcessingApiConfigId(e.target.value)}
+							className="w-full">
+							<VSCodeOption value="">
+								{t("settings:experimental.IMAGE_PROCESSING.selectProvider")}
+							</VSCodeOption>
+							{listApiConfigMeta.map((profile) => (
+								<VSCodeOption key={profile.id} value={profile.id}>
+									{profile.name}
+									{profile.modelId ? ` (${profile.modelId})` : ""}
+								</VSCodeOption>
+							))}
+						</VSCodeDropdown>
 					</div>
-				)}
-			</div>
+					<div>
+						<label className="block font-medium mb-1">
+							{t("settings:experimental.IMAGE_PROCESSING.prompt")}
+						</label>
+						<VSCodeTextArea
+							value={imageProcessingPrompt ?? ""}
+							onInput={(e: any) => setImageProcessingPrompt(e.target.value)}
+							placeholder={DEFAULT_IMAGE_DESCRIPTION_PROMPT}
+							className="w-full"
+							rows={5}
+						/>
+						<p className="text-vscode-descriptionForeground text-xs mt-1">
+							{t("settings:experimental.IMAGE_PROCESSING.promptHint")}
+						</p>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

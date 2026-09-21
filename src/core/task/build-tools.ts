@@ -2,21 +2,22 @@ import path from "path"
 
 import type OpenAI from "openai"
 
-import type { ProviderSettings, ModeConfig, ModelInfo } from "@roo-code/types"
+import type { ProviderSettings, ModeConfig, ModelInfo, ToolProtocol } from "@roo-code/types"
 import { customToolRegistry, formatNative } from "@roo-code/core"
 
 import type { ClineProvider } from "../webview/ClineProvider"
 import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
 import { getModeBySlug, defaultModeSlug } from "../../shared/modes"
 
-import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
+import { getNativeTools, getLayeredTools, getMcpServerToolDefinitions } from "../prompts/tools/native-tools"
 import {
 	filterNativeToolsForMode,
 	filterMcpToolsForMode,
 	resolveToolAlias,
 } from "../prompts/tools/filter-tools-for-mode"
+import { buildLayeredToolRegistry, type LayeredToolRegistry } from "./layered-tools"
 
-interface BuildToolsOptions {
+export interface BuildToolsOptions {
 	provider: ClineProvider
 	cwd: string
 	mode: string | undefined
@@ -32,9 +33,10 @@ interface BuildToolsOptions {
 	 * to pass all tool definitions while restricting callable tools.
 	 */
 	includeAllToolsWithRestrictions?: boolean
+	toolProtocol?: ToolProtocol
 }
 
-interface BuildToolsResult {
+export interface BuildToolsResult {
 	/**
 	 * The tools to pass to the model.
 	 * If includeAllToolsWithRestrictions is true, this includes ALL tools.
@@ -47,6 +49,8 @@ interface BuildToolsResult {
 	 * Use this with allowedFunctionNames in providers that support it.
 	 */
 	allowedFunctionNames?: string[]
+	/** The currently allowed source-aware registry used by the layered gateway. */
+	layeredRegistry: LayeredToolRegistry
 }
 
 /**
@@ -91,6 +95,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		disabledTools,
 		modelInfo,
 		includeAllToolsWithRestrictions,
+		toolProtocol = "direct",
 	} = options
 
 	const mcpHub = provider.getMcpHub()
@@ -133,8 +138,13 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	)
 
 	// Filter MCP tools based on mode restrictions.
-	const mcpTools = getMcpServerTools(mcpHub, allowedMcpServers)
+	const mcpToolDefinitions = getMcpServerToolDefinitions(mcpHub, allowedMcpServers)
+	const mcpTools = mcpToolDefinitions.map(({ definition }) => definition)
 	const filteredMcpTools = filterMcpToolsForMode(mcpTools, mode, customModes, experiments)
+	const filteredMcpToolNames = new Set(filteredMcpTools.map(getToolName))
+	const filteredMcpToolDefinitions = mcpToolDefinitions.filter(({ definition }) =>
+		filteredMcpToolNames.has(definition.function.name),
+	)
 
 	// Add custom tools if they are available and the experiment is enabled.
 	let nativeCustomTools: OpenAI.Chat.ChatCompletionFunctionTool[] = []
@@ -151,6 +161,20 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 
 	// Combine filtered tools (for backward compatibility and for allowedFunctionNames)
 	const filteredTools = [...filteredNativeTools, ...filteredMcpTools, ...nativeCustomTools]
+	const layeredRegistry = buildLayeredToolRegistry({
+		nativeTools: filteredNativeTools,
+		mcpTools: filteredMcpToolDefinitions,
+		customTools: nativeCustomTools,
+	})
+
+	if (toolProtocol === "layered") {
+		const tools = modeConfig?.layeredTools === false ? [] : getLayeredTools()
+		return {
+			tools,
+			allowedFunctionNames: includeAllToolsWithRestrictions ? tools.map(getToolName) : undefined,
+			layeredRegistry,
+		}
+	}
 
 	// If includeAllToolsWithRestrictions is true, return ALL tools but provide
 	// allowed names based on mode filtering
@@ -167,11 +191,13 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		return {
 			tools: allTools,
 			allowedFunctionNames,
+			layeredRegistry,
 		}
 	}
 
 	// Default behavior: return only filtered tools
 	return {
 		tools: filteredTools,
+		layeredRegistry,
 	}
 }

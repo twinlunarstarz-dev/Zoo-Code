@@ -36,6 +36,8 @@ export const toolParamNames = [
 	"text",
 	"server_name",
 	"tool_name",
+	"tool_id",
+	"input",
 	"arguments",
 	"uri",
 	"question",
@@ -114,6 +116,11 @@ export type NativeToolArgs = {
 	search_files: { path: string; regex: string; file_pattern?: string | null }
 	switch_mode: { mode_slug: string; reason: string }
 	update_todo_list: { todos: string }
+	request_condense_context: Record<string, never>
+	chat_history_lookup: { query: string; limit?: number }
+	search: { query?: string; limit?: number }
+	documentation: { tool_id: string }
+	execute: { tool_id: string; input: string | Record<string, unknown> }
 	use_mcp_tool: { server_name: string; tool_name: string; arguments?: Record<string, unknown> }
 	write_to_file: { path: string; content: string }
 	// Add more tools as they are migrated to native protocol
@@ -286,6 +293,11 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	new_task: "create new task",
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
+	request_condense_context: "condense context",
+	chat_history_lookup: "search chat history",
+	search: "search available tools",
+	documentation: "read tool documentation",
+	execute: "execute a tool",
 	run_slash_command: "run slash command",
 	skill: "load skill",
 	generate_image: "generate images",
@@ -320,6 +332,8 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"switch_mode",
 	"new_task",
 	"update_todo_list",
+	"request_condense_context",
+	"chat_history_lookup",
 	"run_slash_command",
 	"skill",
 ] as const

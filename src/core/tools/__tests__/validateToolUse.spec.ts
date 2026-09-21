@@ -13,6 +13,57 @@ const askMode = modes.find((m) => m.slug === "ask")?.slug || "ask"
 
 describe("mode-validator", () => {
 	describe("isToolAllowedForMode", () => {
+		describe("layered gateway tools", () => {
+			it.each(["search", "documentation", "execute"] as const)(
+				"allows %s by default without broadening internal mode permissions",
+				(tool) => {
+					expect(
+						isToolAllowedForMode(
+							tool,
+							"architect",
+							[],
+							undefined,
+							undefined,
+							undefined,
+							undefined,
+							"layered",
+						),
+					).toBe(true)
+					expect(
+						isToolAllowedForMode(
+							"execute_command",
+							"architect",
+							[],
+							undefined,
+							undefined,
+							undefined,
+							undefined,
+							"layered",
+						),
+					).toBe(false)
+				},
+			)
+
+			it.each(["search", "documentation", "execute"] as const)(
+				"blocks %s when layered tools are disabled for the mode",
+				(tool) => {
+					const customModes = [{ ...modes[0], slug: "no-layered", layeredTools: false }]
+					expect(
+						isToolAllowedForMode(
+							tool,
+							"no-layered",
+							customModes,
+							undefined,
+							undefined,
+							undefined,
+							undefined,
+							"layered",
+						),
+					).toBe(false)
+				},
+			)
+		})
+
 		describe("code mode", () => {
 			it("allows all code mode tools", () => {
 				// Code mode has all groups
@@ -172,6 +223,17 @@ describe("mode-validator", () => {
 	})
 
 	describe("validateToolUse", () => {
+		it.each(["search", "documentation", "execute"] as const)(
+			"allows the layered %s gateway in every mode",
+			(tool) => {
+				for (const mode of modes) {
+					expect(() =>
+						validateToolUse(tool, mode.slug, [], undefined, undefined, undefined, undefined, "layered"),
+					).not.toThrow()
+				}
+			},
+		)
+
 		it("throws error for unknown/invalid tools", () => {
 			// Unknown tools should throw with a specific "Unknown tool" error
 			expect(() => validateToolUse("unknown_tool" as any, "architect", [])).toThrow(

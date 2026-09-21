@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { existsSync, readFileSync, realpathSync } from "node:fs"
+import { dirname, join, posix, resolve, win32 } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
@@ -88,7 +88,11 @@ export function resolveEditorCommand({
 		)
 	}
 
-	return { command, shell }
+	return { command, shell: false }
+}
+
+export function quoteWindowsCommandArgument(argument) {
+	return `"${argument.replaceAll('"', '""')}"`
 }
 
 function run(command, args, { cwd, shell = false, spawnSyncImpl }) {
@@ -112,12 +116,13 @@ export function runBuildAndInstall({
 	rootDirectory = defaultRootDirectory,
 	editorCommand,
 	platform = process.platform,
+	pathApi = platform === "win32" ? win32 : posix,
 	spawnSyncImpl = spawnSync,
 	existsSyncImpl = existsSync,
 	readFileSyncImpl = readFileSync,
 }) {
-	const rootPackage = JSON.parse(readFileSyncImpl(join(rootDirectory, "package.json"), "utf8"))
-	const extensionPackage = JSON.parse(readFileSyncImpl(join(rootDirectory, "src", "package.json"), "utf8"))
+	const rootPackage = JSON.parse(readFileSyncImpl(pathApi.join(rootDirectory, "package.json"), "utf8"))
+	const extensionPackage = JSON.parse(readFileSyncImpl(pathApi.join(rootDirectory, "src", "package.json"), "utf8"))
 	const { spec: packageManager } = parsePackageManager(rootPackage.packageManager)
 	const pnpm = resolvePnpmInvocation({ packageManager, platform, spawnSyncImpl })
 	const editor = resolveEditorCommand({ editorCommand, platform, spawnSyncImpl })
@@ -133,14 +138,14 @@ export function runBuildAndInstall({
 		spawnSyncImpl,
 	})
 
-	const vsixPath = join(rootDirectory, "bin", `${extensionPackage.name}-${extensionPackage.version}.vsix`)
+	const vsixPath = pathApi.join(rootDirectory, "bin", `${extensionPackage.name}-${extensionPackage.version}.vsix`)
 	if (!existsSyncImpl(vsixPath)) {
 		throw new Error(`The VSIX build completed without producing the expected file: ${vsixPath}`)
 	}
 
-	run(editor.command, ["--install-extension", vsixPath, "--force"], {
+	runEditor(editor, ["--install-extension", vsixPath, "--force"], {
 		cwd: rootDirectory,
-		shell: editor.shell,
+		platform,
 		spawnSyncImpl,
 	})
 
@@ -158,6 +163,28 @@ export function main(args = process.argv.slice(2)) {
 	}
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+function runEditor(editor, args, { cwd, platform, spawnSyncImpl }) {
+	if (platform === "win32") {
+		const commandLine = [editor.command, ...args.map(quoteWindowsCommandArgument)].join(" ")
+		run(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", commandLine], { cwd, spawnSyncImpl })
+		return
+	}
+
+	run(editor.command, args, { cwd, shell: editor.shell, spawnSyncImpl })
+}
+
+export function isMainModule(
+	argvPath = process.argv[1],
+	modulePath = fileURLToPath(import.meta.url),
+	realpathSyncImpl = realpathSync,
+) {
+	if (!argvPath) {
+		return false
+	}
+
+	return realpathSyncImpl(resolve(argvPath)) === realpathSyncImpl(modulePath)
+}
+
+if (isMainModule()) {
 	main()
 }

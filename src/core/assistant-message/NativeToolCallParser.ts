@@ -565,6 +565,35 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "search":
+				nativeArgs = {
+					query: partialArgs.query,
+					limit: this.coerceOptionalNumber(partialArgs.limit),
+				}
+				break
+
+			case "chat_history_lookup":
+				nativeArgs = {
+					query: partialArgs.query,
+					limit: this.coerceOptionalNumber(partialArgs.limit),
+				}
+				break
+
+			case "documentation":
+				if (partialArgs.tool_id !== undefined) {
+					nativeArgs = { tool_id: partialArgs.tool_id }
+				}
+				break
+
+			case "execute":
+				if (partialArgs.tool_id !== undefined || partialArgs.input !== undefined) {
+					nativeArgs = {
+						tool_id: partialArgs.tool_id,
+						input: partialArgs.input,
+					}
+				}
+				break
+
 			case "apply_patch":
 				if (partialArgs.patch !== undefined) {
 					nativeArgs = {
@@ -643,6 +672,7 @@ export class NativeToolCallParser {
 
 		const result: ToolUse = {
 			type: "tool_use" as const,
+			id,
 			name,
 			params,
 			partial,
@@ -927,6 +957,60 @@ export class NativeToolCallParser {
 					}
 					break
 
+				case "search":
+					if (
+						(args.query === undefined || typeof args.query === "string") &&
+						(args.limit === undefined || this.coerceOptionalNumber(args.limit) !== undefined)
+					) {
+						nativeArgs = {
+							query: args.query,
+							limit: this.coerceOptionalNumber(args.limit),
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "chat_history_lookup":
+					if (
+						typeof args.query === "string" &&
+						(args.limit === undefined || this.coerceOptionalNumber(args.limit) !== undefined)
+					) {
+						nativeArgs = {
+							query: args.query,
+							limit: this.coerceOptionalNumber(args.limit),
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "documentation":
+					if (typeof args.tool_id === "string" && args.tool_id.length > 0) {
+						nativeArgs = { tool_id: args.tool_id } as NativeArgsFor<TName>
+					}
+					break
+
+				case "execute": {
+					const nestedExecuteInput =
+						typeof args.input === "object" && args.input !== null && !Array.isArray(args.input)
+							? args.input
+							: undefined
+					const executeToolId = args.tool_id ?? nestedExecuteInput?.tool_id
+					const executeInput =
+						args.tool_id === undefined && nestedExecuteInput?.tool_id !== undefined
+							? (nestedExecuteInput.input ?? nestedExecuteInput.arguments)
+							: args.input
+					if (
+						typeof executeToolId === "string" &&
+						executeToolId.length > 0 &&
+						(typeof executeInput === "string" ||
+							(typeof executeInput === "object" && executeInput !== null && !Array.isArray(executeInput)))
+					) {
+						nativeArgs = {
+							tool_id: executeToolId,
+							input: executeInput,
+						} as NativeArgsFor<TName>
+					}
+					break
+				}
+
 				case "access_mcp_resource":
 					if (args.server_name !== undefined && args.uri !== undefined) {
 						nativeArgs = {
@@ -1012,6 +1096,7 @@ export class NativeToolCallParser {
 
 			const result: ToolUse<TName> = {
 				type: "tool_use" as const,
+				id: toolCall.id,
 				name: resolvedName,
 				params,
 				partial: false, // Native tool calls are always complete when yielded
@@ -1080,4 +1165,17 @@ export class NativeToolCallParser {
 			return null
 		}
 	}
+}
+
+/**
+ * Normalize an internal native invocation through the same coercion and
+ * required-field checks used for provider-originated native calls.
+ */
+export function normalizeNativeToolUse<TName extends ToolName>(
+	id: string,
+	name: TName,
+	args: Record<string, unknown>,
+): ToolUse<TName> | null {
+	const result = NativeToolCallParser.parseToolCall({ id, name, arguments: JSON.stringify(args) })
+	return result?.type === "tool_use" ? (result as ToolUse<TName>) : null
 }

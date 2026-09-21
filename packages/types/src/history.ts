@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { toolProtocolSchema } from "./task.js"
+
 /**
  * HistoryItem
  */
@@ -19,6 +21,7 @@ export const historyItemSchema = z.object({
 	size: z.number().optional(),
 	workspace: z.string().optional(),
 	mode: z.string().optional(),
+	toolProtocol: toolProtocolSchema.optional(),
 	apiConfigName: z.string().optional(), // Provider profile name for sticky profile feature
 	status: z.enum(["active", "completed", "delegated", "interrupted"]).optional(),
 	delegatedToId: z.string().optional(), // Last child this parent delegated to

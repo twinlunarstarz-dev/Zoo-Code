@@ -1,7 +1,7 @@
 import NodeCache from "node-cache"
 import getFolderSize from "get-folder-size"
 
-import type { ClineMessage, HistoryItem } from "@roo-code/types"
+import type { ClineMessage, HistoryItem, ToolProtocol } from "@roo-code/types"
 
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
@@ -21,6 +21,7 @@ export type TaskMetadataOptions = {
 	globalStoragePath: string
 	workspace: string
 	mode?: string
+	toolProtocol: ToolProtocol
 	/** Provider profile name for the task (sticky profile feature) */
 	apiConfigName?: string
 	/** Initial status for the task (e.g., "active" for child tasks) */
@@ -36,6 +37,7 @@ export async function taskMetadata({
 	globalStoragePath,
 	workspace,
 	mode,
+	toolProtocol,
 	apiConfigName,
 	initialStatus,
 }: TaskMetadataOptions) {
@@ -110,6 +112,7 @@ export async function taskMetadata({
 		size: taskDirSize,
 		workspace,
 		mode,
+		toolProtocol,
 		...(typeof apiConfigName === "string" && apiConfigName.length > 0 ? { apiConfigName } : {}),
 		...(initialStatus && { status: initialStatus }),
 	}

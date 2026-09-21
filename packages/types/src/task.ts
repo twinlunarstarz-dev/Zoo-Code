@@ -7,6 +7,19 @@ import type { ToolUsage, ToolName } from "./tool.js"
 import type { TodoItem } from "./todo.js"
 
 /**
+ * ToolProtocol
+ *
+ * The model-facing tool protocol is snapshotted when a task is created and
+ * remains immutable for the lifetime of that task.
+ */
+
+export const toolProtocols = ["direct", "layered"] as const
+
+export const toolProtocolSchema = z.enum(toolProtocols)
+
+export type ToolProtocol = z.infer<typeof toolProtocolSchema>
+
+/**
  * TaskProviderLike
  */
 
@@ -88,6 +101,7 @@ export interface CreateTaskOptions {
 	enableCheckpoints?: boolean
 	consecutiveMistakeLimit?: number
 	experiments?: Record<string, boolean>
+	toolProtocol?: ToolProtocol
 	initialTodos?: TodoItem[]
 	/** Initial status for the task's history item (e.g., "active" for child tasks) */
 	initialStatus?: "active" | "delegated" | "completed" | "interrupted"

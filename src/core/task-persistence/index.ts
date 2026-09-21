@@ -1,4 +1,5 @@
 export { type ApiMessage, readApiMessages, saveApiMessages } from "./apiMessages"
 export { readTaskMessages, saveTaskMessages } from "./taskMessages"
+export { searchChatHistory } from "./chatHistorySearch"
 export { taskMetadata } from "./taskMetadata"
 export { TaskHistoryStore, assertValidTransition } from "./TaskHistoryStore"

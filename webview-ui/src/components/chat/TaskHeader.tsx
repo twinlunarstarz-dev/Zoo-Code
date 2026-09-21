@@ -37,6 +37,7 @@ export interface TaskHeaderProps {
 	buttonsDisabled: boolean
 	handleCondenseContext: (taskId: string) => void
 	todos?: any[]
+	toolProtocol?: "direct" | "layered"
 }
 
 const TaskHeader = ({
@@ -54,6 +55,7 @@ const TaskHeader = ({
 	buttonsDisabled,
 	handleCondenseContext,
 	todos,
+	toolProtocol,
 }: TaskHeaderProps) => {
 	const { t } = useTranslation()
 	const { apiConfiguration, currentTaskItem } = useExtensionState()
@@ -150,7 +152,18 @@ const TaskHeader = ({
 				<div className="flex justify-between items-center gap-0">
 					<div className="flex items-center select-none grow min-w-0">
 						<div className="grow min-w-0">
-							{isTaskExpanded && <span className="font-bold">{t("chat:task.title")}</span>}
+							{isTaskExpanded && (
+								<div className="flex items-center gap-2">
+									<span className="font-bold">{t("chat:task.title")}</span>
+									{toolProtocol === "layered" && (
+										<span
+											data-testid="layered-tooling-badge"
+											className="rounded-full border border-vscode-editorWidget-border px-2 py-0.5 text-xs font-medium text-vscode-descriptionForeground">
+											{t("chat:task.layeredTooling")}
+										</span>
+									)}
+								</div>
+							)}
 							{!isTaskExpanded && (
 								<div className="flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis">
 									<Mention text={task.text} />

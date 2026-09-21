@@ -22,6 +22,8 @@
 		"editTools": "Edit tools",
 		"doneEditing": "Done editing",
 		"allowedFiles": "Allowed files:",
+		"layeredTools": "Layered tools (Search, Documentation, Execute)",
+		"layeredToolsDescription": "Allow this mode to use the three gateway tools when Layered Tooling is enabled. The native, MCP, and custom tools selected below remain the only targets available behind the gateways.",
 		"toolNames": {
 			"read": "Read Files",
 			"edit": "Edit Files",

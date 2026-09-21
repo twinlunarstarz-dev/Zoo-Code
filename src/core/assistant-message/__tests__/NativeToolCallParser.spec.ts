@@ -1,4 +1,4 @@
-import { NativeToolCallParser } from "../NativeToolCallParser"
+import { NativeToolCallParser, normalizeNativeToolUse } from "../NativeToolCallParser"
 
 describe("NativeToolCallParser", () => {
 	beforeEach(() => {
@@ -291,6 +291,99 @@ describe("NativeToolCallParser", () => {
 				})
 			})
 		})
+
+		describe("layered gateway tools", () => {
+			it("parses an all-tools search envelope", () => {
+				const result = NativeToolCallParser.parseToolCall({
+					id: "search-1",
+					name: "search",
+					arguments: JSON.stringify({ query: "" }),
+				})
+				expect(result).toMatchObject({
+					type: "tool_use",
+					name: "search",
+					nativeArgs: { query: "", limit: undefined },
+				})
+			})
+
+			it("coerces a numeric search limit", () => {
+				const result = NativeToolCallParser.parseToolCall({
+					id: "search-2",
+					name: "search",
+					arguments: JSON.stringify({ query: "file", limit: "20" }),
+				})
+				expect(result?.type === "tool_use" && result.nativeArgs).toEqual({ query: "file", limit: 20 })
+			})
+
+			it("parses documentation and execute envelopes", () => {
+				const documentation = NativeToolCallParser.parseToolCall({
+					id: "docs-1",
+					name: "documentation",
+					arguments: JSON.stringify({ tool_id: "native:read_file" }),
+				})
+				const execute = NativeToolCallParser.parseToolCall({
+					id: "execute-1",
+					name: "execute",
+					arguments: JSON.stringify({
+						tool_id: "native:read_file",
+						input: { path: "README.md" },
+					}),
+				})
+
+				expect(documentation?.type === "tool_use" && documentation.nativeArgs).toEqual({
+					tool_id: "native:read_file",
+				})
+				expect(execute?.type === "tool_use" && execute.nativeArgs).toEqual({
+					tool_id: "native:read_file",
+					input: { path: "README.md" },
+				})
+			})
+
+			it("recovers the nested legacy execute envelope emitted by local providers", () => {
+				const result = NativeToolCallParser.parseToolCall({
+					id: "execute-call",
+					name: "execute",
+					arguments: JSON.stringify({
+						input: {
+							tool_id: "mcp:brave-search:brave_web_search",
+							arguments: { query: "latest TypeScript release" },
+						},
+					}),
+				})
+
+				expect(result).toMatchObject({
+					name: "execute",
+					nativeArgs: {
+						tool_id: "mcp:brave-search:brave_web_search",
+						input: { query: "latest TypeScript release" },
+					},
+				})
+			})
+
+			it("rejects an array-shaped execute input value", () => {
+				const result = NativeToolCallParser.parseToolCall({
+					id: "execute-invalid",
+					name: "execute",
+					arguments: JSON.stringify({ tool_id: "native:read_file", input: [] }),
+				})
+				expect(result).toBeNull()
+			})
+		})
+	})
+
+	describe("normalizeNativeToolUse", () => {
+		it("reuses provider argument normalization for internal native dispatch", () => {
+			const result = normalizeNativeToolUse("outer-call", "list_files", {
+				path: ".",
+				recursive: "true",
+			})
+
+			expect(result).toMatchObject({
+				id: "outer-call",
+				name: "list_files",
+				nativeArgs: { path: ".", recursive: true },
+			})
+		})
 	})
 
 	describe("processStreamingChunk", () => {
@@ -309,6 +402,23 @@ describe("NativeToolCallParser", () => {
 				expect(result?.nativeArgs).toBeDefined()
 				const nativeArgs = result?.nativeArgs as { path: string }
 				expect(nativeArgs.path).toBe("src/test.ts")
+			})
+		})
+
+		describe("layered gateway tools", () => {
+			it("emits safe partial execute arguments once the tool ID is available", () => {
+				const id = "toolu_layered_stream"
+				NativeToolCallParser.startStreamingToolCall(id, "execute")
+
+				const result = NativeToolCallParser.processStreamingChunk(
+					id,
+					JSON.stringify({ tool_id: "native:read_file", input: { path: "README.md" } }),
+				)
+
+				expect(result?.nativeArgs).toEqual({
+					tool_id: "native:read_file",
+					input: { path: "README.md" },
+				})
 			})
 		})
 	})

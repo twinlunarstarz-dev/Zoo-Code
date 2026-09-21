@@ -101,6 +101,12 @@ export const modeConfigSchema = z.object({
 	description: z.string().optional(),
 	customInstructions: z.string().optional(),
 	groups: groupEntryArraySchema,
+	layeredTools: z
+		.boolean()
+		.describe(
+			"Whether this mode may use the search, documentation, and execute gateways when layered tooling is active. Defaults to enabled when omitted.",
+		)
+		.optional(),
 	source: z.enum(["global", "project"]).optional(),
 	allowedMcpServers: z
 		.array(z.string())

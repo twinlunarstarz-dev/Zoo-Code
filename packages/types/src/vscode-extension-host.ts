@@ -825,6 +825,9 @@ export interface ClineSayTool {
 		| "runSlashCommand"
 		| "updateTodoList"
 		| "skill"
+		| "layeredSearch"
+		| "layeredDocumentation"
+		| "layeredExecute"
 	path?: string
 	// For readCommandOutput
 	readStart?: number
@@ -880,6 +883,9 @@ export interface ClineSayTool {
 	args?: string
 	source?: string
 	description?: string
+	// Properties for layered gateway tools
+	details?: string
+	toolId?: string
 	// Properties for skill tool
 	skill?: string
 }

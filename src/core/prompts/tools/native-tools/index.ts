@@ -12,6 +12,8 @@ import listFiles from "./list_files"
 import newTask from "./new_task"
 import readCommandOutput from "./read_command_output"
 import { createReadFileTool, type ReadFileToolOptions } from "./read_file"
+import requestCondenseContext from "./request_condense_context"
+import chatHistoryLookup from "./chat_history_lookup"
 import runSlashCommand from "./run_slash_command"
 import skill from "./skill"
 import searchReplace from "./search_replace"
@@ -21,8 +23,10 @@ import switchMode from "./switch_mode"
 import updateTodoList from "./update_todo_list"
 import writeToFile from "./write_to_file"
 
-export { getMcpServerTools } from "./mcp_server"
+export { getMcpServerToolDefinitions, getMcpServerTools } from "./mcp_server"
+export type { McpServerToolDefinition } from "./mcp_server"
 export { convertOpenAIToolToAnthropic, convertOpenAIToolsToAnthropic } from "./converters"
+export { getLayeredTools, layeredTools } from "./layered"
 export type { ReadFileToolOptions } from "./read_file"
 
 /**
@@ -59,6 +63,8 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		newTask,
 		readCommandOutput,
 		createReadFileTool(readFileOptions),
+		requestCondenseContext,
+		chatHistoryLookup,
 		runSlashCommand,
 		skill,
 		searchReplace,

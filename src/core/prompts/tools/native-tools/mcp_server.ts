@@ -3,6 +3,12 @@ import { McpHub } from "../../../../services/mcp/McpHub"
 import { buildMcpToolName } from "../../../../utils/mcp-name"
 import { normalizeToolSchema, type JsonSchema } from "../../../../utils/json-schema"
 
+export interface McpServerToolDefinition {
+	definition: OpenAI.Chat.ChatCompletionFunctionTool
+	serverName: string
+	toolName: string
+}
+
 /**
  * Dynamically generates native tool definitions for all enabled tools across connected MCP servers.
  * Tools are deduplicated by name to prevent API errors. When the same server exists in both
@@ -11,7 +17,7 @@ import { normalizeToolSchema, type JsonSchema } from "../../../../utils/json-sch
  * @param mcpHub The McpHub instance containing connected servers.
  * @returns An array of OpenAI.Chat.ChatCompletionTool definitions.
  */
-export function getMcpServerTools(mcpHub?: McpHub, allowedServers?: string[]): OpenAI.Chat.ChatCompletionTool[] {
+export function getMcpServerToolDefinitions(mcpHub?: McpHub, allowedServers?: string[]): McpServerToolDefinition[] {
 	if (!mcpHub) {
 		return []
 	}
@@ -23,7 +29,7 @@ export function getMcpServerTools(mcpHub?: McpHub, allowedServers?: string[]): O
 		const allowSet = new Set(allowedServers)
 		servers = servers.filter((s) => allowSet.has(s.name))
 	}
-	const tools: OpenAI.Chat.ChatCompletionTool[] = []
+	const tools: McpServerToolDefinition[] = []
 	// Track seen tool names to prevent duplicates (e.g., when same server exists in both global and project configs)
 	const seenToolNames = new Set<string>()
 
@@ -58,7 +64,7 @@ export function getMcpServerTools(mcpHub?: McpHub, allowedServers?: string[]): O
 				parameters = { type: "object", additionalProperties: false } as JsonSchema
 			}
 
-			const toolDefinition: OpenAI.Chat.ChatCompletionTool = {
+			const toolDefinition: OpenAI.Chat.ChatCompletionFunctionTool = {
 				type: "function",
 				function: {
 					name: toolName,
@@ -67,9 +73,17 @@ export function getMcpServerTools(mcpHub?: McpHub, allowedServers?: string[]): O
 				},
 			}
 
-			tools.push(toolDefinition)
+			tools.push({
+				definition: toolDefinition,
+				serverName: server.name,
+				toolName: tool.name,
+			})
 		}
 	}
 
 	return tools
+}
+
+export function getMcpServerTools(mcpHub?: McpHub, allowedServers?: string[]): OpenAI.Chat.ChatCompletionTool[] {
+	return getMcpServerToolDefinitions(mcpHub, allowedServers).map(({ definition }) => definition)
 }

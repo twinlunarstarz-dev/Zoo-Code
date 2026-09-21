@@ -48,7 +48,7 @@ On execution, the handler will:
 1. reset the consecutive mistake count;
 2. push one success tool result indicating that condensation is starting;
 3. call `Task.condenseContext()`; and
-4. route thrown failures through the standard `handleError` callback.
+4. report thrown failures through the task's existing error message channel without emitting a second tool result.
 
 The success result must be pushed before `Task.condenseContext()` is called. The existing condensation method begins by flushing pending tool results. This ordering ensures the current `tool_use` has a matching `tool_result` in conversation history before the history is summarized.
 
@@ -60,19 +60,20 @@ Wire the handler into the native tool dispatch switch in `src/core/assistant-mes
 
 `request_condense_context` must be called alone because condensation replaces the effective API history while tool processing is underway. Sibling tools must not execute against history that is being condensed.
 
-Enforce this rule in the completed assistant-turn validation in `Task.recursivelyMakeClineRequests()`, near the existing special handling for `new_task`:
+Enforce this rule during streamed tool presentation and completed assistant-turn validation:
 
-- when a completed assistant turn contains `request_condense_context` and other tool calls, retain the condensation call for execution;
-- synthesize an error result for every sibling tool call; and
+- if an earlier tool call already exists when `request_condense_context` is presented, reject the condensation call without condensing because the earlier call may already have executed;
+- if `request_condense_context` is the first tool call, execute it and suppress later sibling calls during completed-turn validation;
+- synthesize an error result for every suppressed later sibling; and
 - state in each error that it was skipped because `request_condense_context` must be the only tool in the turn.
 
-This behavior prioritizes the explicitly requested context-boundary operation and prevents partial sibling execution. The tool description should make this recovery path uncommon.
+Native tools execute as their streamed calls finish, before the complete assistant turn is known. The streaming-aware rule avoids claiming that earlier sibling calls were suppressed after they may already have run. The tool description should make either recovery path uncommon.
 
 ## Data Flow
 
 1. Tool assembly exposes `request_condense_context` to the provider in every mode.
 2. The model returns a native tool call with an empty argument object.
-3. Assistant-turn validation confirms the call is isolated, or creates sibling error results.
+3. Streamed presentation rejects the condensation call if an earlier tool exists; otherwise completed-turn validation creates error results for later siblings.
 4. `presentAssistantMessage()` dispatches to `RequestCondenseContextTool`.
 5. The handler pushes the matching success tool result.
 6. `Task.condenseContext()` flushes pending results, invokes `summarizeConversation()` with `isAutomaticTrigger: false`, overwrites stored API history with the non-destructive condensed representation, and emits the existing condensation UI message.
@@ -81,9 +82,10 @@ This behavior prioritizes the explicitly requested context-boundary operation an
 ## Error Handling
 
 - Invalid or missing native arguments continue to use the existing native tool validation path.
-- A thrown condensation failure is converted into the standard tool error result through `handleError`.
+- A thrown condensation failure after the success result is reported through the task error message channel; a duplicate native tool result is not emitted.
 - Errors already handled internally by `Task.condenseContext()` continue to emit the existing `condense_context_error` UI message. The existing method currently returns after such an error; this design does not change that contract.
-- Sibling calls in a non-isolated turn receive synthetic error results so every native `tool_use` has exactly one matching `tool_result`.
+- A condensation call after an earlier sibling receives a normal error result and does not condense.
+- Later sibling calls after a successfully presented condensation call receive synthetic error results so every native `tool_use` has exactly one matching `tool_result`.
 - Automatic condensation behavior and thresholds are untouched.
 
 ## Testing
@@ -98,7 +100,7 @@ Cover `RequestCondenseContextTool` directly:
 - it emits the success result before invoking `Task.condenseContext()`;
 - it invokes `Task.condenseContext()` exactly once;
 - it resets the consecutive mistake count; and
-- it sends thrown errors to `handleError` without emitting a duplicate result.
+- it reports thrown errors through `Task.say()` without emitting a duplicate result.
 
 ### Registration and Filtering Tests
 
@@ -113,9 +115,9 @@ Verify:
 Verify:
 
 - an isolated condensation call executes normally;
-- when called with siblings, the condensation call remains executable;
-- sibling calls are not executed; and
-- every skipped sibling receives a matching synthetic error result.
+- when called after an earlier sibling, condensation is rejected;
+- when called first, later sibling calls are not executed; and
+- every rejected or skipped call receives a matching error result.
 
 ### Validation Commands
 

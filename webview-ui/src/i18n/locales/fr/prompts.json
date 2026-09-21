@@ -28,7 +28,9 @@
 			"command": "Exécuter des commandes",
 			"mcp": "Utiliser MCP"
 		},
-		"noTools": "Aucun"
+		"noTools": "Aucun",
+		"layeredTools": "Layered tools (Search, Documentation, Execute)",
+		"layeredToolsDescription": "Allow this mode to use the three gateway tools when Layered Tooling is enabled. The native, MCP, and custom tools selected below remain the only targets available behind the gateways."
 	},
 	"roleDefinition": {
 		"title": "Définition du rôle",

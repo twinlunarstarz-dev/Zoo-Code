@@ -922,6 +922,10 @@
 			"refreshSuccess": "Narzędzia odświeżone pomyślnie",
 			"refreshError": "Nie udało się odświeżyć narzędzi",
 			"toolParameters": "Parametry"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Włącz narzędzia warstwowe",
+			"description": "W nowych zadaniach model widzi tylko narzędzia bramy do wyszukiwania, dokumentacji i wykonywania. Włączone narzędzia wbudowane, MCP i niestandardowe pozostają dostępne za bramą, co zmniejsza użycie kontekstu promptu. Istniejące zadania zachowują swój pierwotny protokół narzędzi."
 		}
 	},
 	"promptCaching": {

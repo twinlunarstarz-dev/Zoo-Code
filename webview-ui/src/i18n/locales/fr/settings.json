@@ -922,6 +922,10 @@
 			"refreshSuccess": "Outils actualisés avec succès",
 			"refreshError": "Échec de l'actualisation des outils",
 			"toolParameters": "Paramètres"
+		},
+		"LAYERED_TOOLING": {
+			"name": "Activer les outils en couches",
+			"description": "Pour les nouvelles tâches, expose au modèle uniquement les outils de passerelle de recherche, de documentation et d'exécution. Les outils intégrés, MCP et personnalisés activés restent accessibles derrière la passerelle, ce qui réduit l'utilisation du contexte du prompt. Les tâches existantes conservent leur protocole d'outils d'origine."
 		}
 	},
 	"promptCaching": {
