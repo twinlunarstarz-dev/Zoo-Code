@@ -410,6 +410,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didCompleteReadingStream = false
 	private _started = false
 	private initializationPromise: Promise<void> = Promise.resolve()
+	private historyRestorationPromise: Promise<void> = Promise.resolve()
+	private resolveHistoryRestoration?: () => void
 	/**
 	 * Image descriptions are generated for the request-only copy of history. Keep
 	 * them for the lifetime of the task so a later tool turn does not send the
@@ -614,7 +616,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					console.error("[Task#constructor] startTask failed:", error)
 				})
 			} else if (historyItem) {
+				this.historyRestorationPromise = new Promise<void>((resolve) => {
+					this.resolveHistoryRestoration = resolve
+				})
 				this.initializationPromise = this.resumeTaskFromHistory().catch((error) => {
+					this.resolveHistoryRestoration?.()
 					console.error("[Task#constructor] resumeTaskFromHistory failed:", error)
 				})
 			} else {
@@ -625,6 +631,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public waitForInitialization(): Promise<void> {
 		return this.initializationPromise
+	}
+
+	/**
+	 * Wait until the persisted transcript has been loaded into this task.
+	 *
+	 * Resuming a task also creates a resumable ask, which intentionally waits for
+	 * user input. Callers that only need to render the restored conversation must
+	 * not wait for that full interaction to finish.
+	 */
+	public waitForHistoryRestoration(): Promise<void> {
+		return this.historyRestorationPromise
 	}
 
 	/**
@@ -2074,6 +2091,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// This is important in case the user deletes messages without resuming
 			// the task first.
 			this.apiConversationHistory = await this.getSavedApiConversationHistory()
+			this.resolveHistoryRestoration?.()
+			this.resolveHistoryRestoration = undefined
 
 			const lastClineMessage = this.clineMessages
 				.slice()

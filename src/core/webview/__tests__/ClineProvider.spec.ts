@@ -736,7 +736,7 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("showTaskWithId waits for restored messages before opening chat", async () => {
+	test("showTaskWithId opens after transcript hydration without waiting for resume input", async () => {
 		const historyItem = {
 			id: "restored-task",
 			ts: Date.now(),
@@ -748,9 +748,10 @@ describe("ClineProvider", () => {
 		}
 		const order: string[] = []
 		const restoredTask = {
-			waitForInitialization: vi.fn(async () => {
+			waitForHistoryRestoration: vi.fn(async () => {
 				order.push("initialized")
 			}),
+			waitForInitialization: vi.fn(() => new Promise<void>(() => {})),
 		}
 		vi.spyOn(provider, "getTaskWithId").mockResolvedValue({ historyItem } as any)
 		vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(restoredTask as any)
@@ -763,7 +764,8 @@ describe("ClineProvider", () => {
 
 		await provider.showTaskWithId(historyItem.id)
 
-		expect(restoredTask.waitForInitialization).toHaveBeenCalledOnce()
+		expect(restoredTask.waitForHistoryRestoration).toHaveBeenCalledOnce()
+		expect(restoredTask.waitForInitialization).not.toHaveBeenCalled()
 		expect(order).toEqual(["initialized", "state", "open"])
 	})
 

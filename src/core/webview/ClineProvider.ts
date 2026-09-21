@@ -1975,7 +1975,11 @@ export class ClineProvider
 			// Non-current task.
 			const { historyItem } = await this.getTaskWithId(id)
 			const task = await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
-			await task.waitForInitialization()
+			// Restoring a task creates a resumable ask that waits for user input.
+			// Wait only for the persisted transcript to be hydrated before sending
+			// the state snapshot; waiting for the full resume loop leaves the chat
+			// empty until the user clicks Continue or sends a message.
+			await task.waitForHistoryRestoration()
 			await this.postStateToWebviewWithoutTaskHistory()
 		}
 
@@ -2109,7 +2113,7 @@ export class ClineProvider
 		const state = await this.getStateToPostToWebview()
 		this.clineMessagesSeq++
 		state.clineMessagesSeq = this.clineMessagesSeq
-		this.postMessageToWebview({ type: "state", state })
+		await this.postMessageToWebview({ type: "state", state })
 	}
 
 	/**
@@ -2125,7 +2129,7 @@ export class ClineProvider
 		this.clineMessagesSeq++
 		state.clineMessagesSeq = this.clineMessagesSeq
 		const { taskHistory: _omit, ...rest } = state
-		this.postMessageToWebview({ type: "state", state: rest })
+		await this.postMessageToWebview({ type: "state", state: rest })
 	}
 
 	/**
