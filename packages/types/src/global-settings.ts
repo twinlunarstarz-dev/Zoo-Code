@@ -234,6 +234,8 @@ export const globalSettingsSchema = z.object({
 	telemetrySetting: telemetrySettingsSchema.optional(),
 
 	mcpEnabled: z.boolean().optional(),
+	/** Maximum number of matching tools returned by layered search. */
+	layeredToolSearchLimit: z.number().int().min(1).max(50).optional(),
 
 	mode: z.string().optional(),
 	modeApiConfigs: z.record(z.string(), z.string()).optional(),

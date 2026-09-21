@@ -331,6 +331,7 @@ export type ExtensionState = Pick<
 	| "requestDelaySeconds"
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"
+	| "layeredToolSearchLimit"
 > & {
 	lockApiConfigAcrossModes?: boolean
 	version: string

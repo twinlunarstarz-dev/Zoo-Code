@@ -15,7 +15,10 @@ import { SearchableSetting } from "./SearchableSetting"
 import { ExperimentalFeature } from "./ExperimentalFeature"
 import { ImageGenerationSettings, ImageProcessingSettings } from "./ImageGenerationSettings"
 import { CustomToolsSettings } from "./CustomToolsSettings"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider } from "@src/components/ui"
+
+const DEFAULT_LAYERED_TOOL_SEARCH_LIMIT = 25
+const MAX_LAYERED_TOOL_SEARCH_LIMIT = 50
 
 type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	experiments: Experiments
@@ -31,10 +34,13 @@ type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	imageProcessingEnabled?: boolean
 	imageProcessingApiConfigId?: string
 	imageProcessingPrompt?: string
+	layeredToolSearchLimit?: number
 	listApiConfigMeta?: ProviderSettingsEntry[]
 	condensingApiConfigOverride?: boolean
 	condensingApiConfigId?: string
-	setCachedStateField?: SetCachedStateField<"condensingApiConfigOverride" | "condensingApiConfigId">
+	setCachedStateField?: SetCachedStateField<
+		"condensingApiConfigOverride" | "condensingApiConfigId" | "layeredToolSearchLimit"
+	>
 	setImageGenerationProvider?: (provider: ImageGenerationProvider) => void
 	setOpenRouterImageApiKey?: (apiKey: string) => void
 	setImageGenerationSelectedModel?: (model: string) => void
@@ -60,6 +66,7 @@ export const ExperimentalSettings = ({
 	imageProcessingEnabled,
 	imageProcessingApiConfigId,
 	imageProcessingPrompt,
+	layeredToolSearchLimit,
 	listApiConfigMeta,
 	condensingApiConfigOverride,
 	condensingApiConfigId,
@@ -208,6 +215,51 @@ export const ExperimentalSettings = ({
 							setImageProcessingApiConfigId={setImageProcessingApiConfigId}
 							setImageProcessingPrompt={setImageProcessingPrompt}
 						/>
+					</SearchableSetting>
+				)}
+
+				{experiments[EXPERIMENT_IDS.LAYERED_TOOLING] && setCachedStateField && (
+					<SearchableSetting
+						settingId="experimental-layered-tool-search-limit"
+						section="experimental"
+						label={t("settings:experimental.LAYERED_TOOL_SEARCH_LIMIT.name")}>
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center gap-3">
+								<Slider
+									min={1}
+									max={50}
+									step={1}
+									value={[
+										Math.min(
+											MAX_LAYERED_TOOL_SEARCH_LIMIT,
+											Math.max(1, layeredToolSearchLimit ?? DEFAULT_LAYERED_TOOL_SEARCH_LIMIT),
+										),
+									]}
+									onValueChange={([value]) => setCachedStateField("layeredToolSearchLimit", value)}
+									data-testid="layered-tool-search-limit-slider"
+								/>
+								<Input
+									type="number"
+									min={1}
+									max={50}
+									value={layeredToolSearchLimit ?? DEFAULT_LAYERED_TOOL_SEARCH_LIMIT}
+									onChange={(event) => {
+										const value = Number(event.target.value)
+										if (Number.isFinite(value)) {
+											setCachedStateField(
+												"layeredToolSearchLimit",
+												Math.min(MAX_LAYERED_TOOL_SEARCH_LIMIT, Math.max(1, Math.floor(value))),
+											)
+										}
+									}}
+									className="w-16"
+									data-testid="layered-tool-search-limit-input"
+								/>
+							</div>
+							<p className="text-vscode-descriptionForeground text-sm">
+								{t("settings:experimental.LAYERED_TOOL_SEARCH_LIMIT.description")}
+							</p>
+						</div>
 					</SearchableSetting>
 				)}
 

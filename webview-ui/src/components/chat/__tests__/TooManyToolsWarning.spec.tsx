@@ -12,10 +12,19 @@ vi.mock("@/utils/vscode", () => ({
 
 // Mock ExtensionState context with variable mcpServers
 const mockMcpServers = vi.fn()
+const mockExperiments = vi.fn()
 
 vi.mock("@/context/ExtensionStateContext", () => ({
 	useExtensionState: () => ({
 		mcpServers: mockMcpServers(),
+		experiments: mockExperiments(),
+	}),
+}))
+
+vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionState: () => ({
+		mcpServers: mockMcpServers(),
+		experiments: mockExperiments(),
 	}),
 }))
 
@@ -52,6 +61,7 @@ describe("TooManyToolsWarning", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockMcpServers.mockReturnValue([])
+		mockExperiments.mockReturnValue({ layeredTooling: false })
 	})
 
 	it("does not render when there are no MCP servers", () => {
@@ -224,11 +234,11 @@ describe("TooManyToolsWarning", () => {
 
 	it("counts tools across multiple servers", () => {
 		// Create tools across multiple servers
-		const tools1 = Array.from({ length: 35 }, (_, i) => ({
+		const tools1 = Array.from({ length: Math.floor(MAX_MCP_TOOLS_THRESHOLD / 2) + 1 }, (_, i) => ({
 			name: `server1tool${i}`,
 			enabledForPrompt: true,
 		}))
-		const tools2 = Array.from({ length: 30 }, (_, i) => ({
+		const tools2 = Array.from({ length: Math.ceil(MAX_MCP_TOOLS_THRESHOLD / 2) + 1 }, (_, i) => ({
 			name: `server2tool${i}`,
 			enabledForPrompt: true,
 		}))
@@ -250,13 +260,31 @@ describe("TooManyToolsWarning", () => {
 
 		render(<TooManyToolsWarning />)
 
-		// 35 + 30 = 65 tools > 60 threshold
+		// The combined count exceeds the current threshold.
 		expect(screen.getByText("Too many tools enabled")).toBeInTheDocument()
 		expect(
 			screen.getByText(
-				`You have 65 tools enabled via 2 MCP servers. Such a high number can confuse the model and lead to errors. Try to keep it below ${MAX_MCP_TOOLS_THRESHOLD}.`,
+				`You have ${tools1.length + tools2.length} tools enabled via 2 MCP servers. Such a high number can confuse the model and lead to errors. Try to keep it below ${MAX_MCP_TOOLS_THRESHOLD}.`,
 			),
 		).toBeInTheDocument()
+	})
+
+	it("suppresses the warning when layered tooling is enabled", () => {
+		mockExperiments.mockReturnValue({ layeredTooling: true })
+		mockMcpServers.mockReturnValue([
+			{
+				name: "server1",
+				status: "connected",
+				disabled: false,
+				tools: Array.from({ length: MAX_MCP_TOOLS_THRESHOLD + 1 }, (_, i) => ({
+					name: `tool${i}`,
+					enabledForPrompt: true,
+				})),
+			},
+		])
+
+		const { container } = render(<TooManyToolsWarning />)
+		expect(container.firstChild).toBeNull()
 	})
 
 	it("renders MCP settings link and opens settings when clicked", () => {

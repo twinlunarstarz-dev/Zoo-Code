@@ -214,6 +214,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		imageProcessingEnabled,
 		imageProcessingApiConfigId,
 		imageProcessingPrompt,
+		layeredToolSearchLimit,
 		reasoningBlockCollapsed,
 		chatFontSize,
 		enterBehavior,
@@ -500,6 +501,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					imageProcessingEnabled,
 					imageProcessingApiConfigId,
 					imageProcessingPrompt,
+					layeredToolSearchLimit: Math.min(50, Math.max(1, Math.floor(layeredToolSearchLimit ?? 25))),
 					experiments,
 					customSupportPrompts,
 				},
@@ -1014,6 +1016,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								imageProcessingEnabled={imageProcessingEnabled as boolean | undefined}
 								imageProcessingApiConfigId={imageProcessingApiConfigId as string | undefined}
 								imageProcessingPrompt={imageProcessingPrompt as string | undefined}
+								layeredToolSearchLimit={layeredToolSearchLimit}
 								listApiConfigMeta={listApiConfigMeta}
 								condensingApiConfigOverride={condensingApiConfigOverride ?? false}
 								condensingApiConfigId={condensingApiConfigId}

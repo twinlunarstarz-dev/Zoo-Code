@@ -35,7 +35,7 @@ export function searchLayeredToolRegistry(
 ): LayeredToolSearchResult[] {
 	const normalizedOptions = typeof options === "number" ? { limit: options } : options
 	const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
-	const boundedLimit = Math.max(1, Math.min(50, Math.floor(normalizedOptions.limit ?? 10)))
+	const boundedLimit = Math.max(1, Math.min(50, Math.floor(normalizedOptions.limit ?? 25)))
 	const includeAliases = normalizedOptions.includeAliases ?? true
 	const includeDetails = normalizedOptions.includeDetails ?? false
 

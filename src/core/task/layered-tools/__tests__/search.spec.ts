@@ -56,4 +56,14 @@ describe("searchLayeredToolRegistry", () => {
 		expect(results).toHaveLength(1)
 		expect(results[0]?.id).toBe("native:read_file")
 	})
+
+	it("defaults to 25 non-empty results", () => {
+		const largeRegistry = buildLayeredToolRegistry({
+			nativeTools: Array.from({ length: 30 }, (_, index) => tool(`tool_${index}`, "matching tool")),
+			mcpTools: [],
+			customTools: [],
+		})
+
+		expect(searchLayeredToolRegistry(largeRegistry, "matching")).toHaveLength(25)
+	})
 })

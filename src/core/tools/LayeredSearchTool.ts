@@ -19,7 +19,9 @@ export class LayeredSearchTool extends BaseTool<"search"> {
 		}
 
 		const query = typeof params.query === "string" ? params.query.trim() : ""
-		const limit = query ? Math.max(1, Math.min(50, Math.floor(params.limit ?? 10))) : undefined
+		const state = await task.providerRef.deref()?.getState()
+		const configuredLimit = state?.layeredToolSearchLimit ?? 25
+		const limit = query ? Math.max(1, Math.min(50, Math.floor(params.limit ?? configuredLimit))) : undefined
 		const registry = await task.buildAllowedLayeredToolRegistry()
 		const results = searchLayeredToolRegistry(registry, query, {
 			limit,

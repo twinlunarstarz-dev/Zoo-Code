@@ -1993,9 +1993,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			await this.say("text", task, images)
 
-			// Check for too many MCP tools and warn the user
+			// Direct tasks expose every enabled MCP tool to the model. Layered tasks
+			// expose only gateway tools, so the direct-tool warning is not applicable.
 			const { enabledToolCount, enabledServerCount } = await this.getEnabledMcpToolsCount()
-			if (enabledToolCount > MAX_MCP_TOOLS_THRESHOLD) {
+			if (this.toolProtocol !== "layered" && enabledToolCount > MAX_MCP_TOOLS_THRESHOLD) {
 				await this.say(
 					"too_many_tools_warning",
 					JSON.stringify({

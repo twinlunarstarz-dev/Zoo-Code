@@ -133,7 +133,7 @@ Behavior with a non-empty query:
 - Rank across stable ID, display name, source/server metadata, and description.
 - Use deterministic tie-breaking.
 - Return a compact bounded list with stable ID, display name, and source.
-- Default to 10 matches and enforce a hard maximum of 50.
+- Default to 25 matches and enforce a hard maximum of 50. The default can be adjusted by the user in Experimental settings, and the model may request a lower per-call limit.
 - Do not return complete descriptions or schemas.
 
 Behavior with an absent or empty query:

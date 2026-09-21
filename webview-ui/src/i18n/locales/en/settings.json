@@ -1007,6 +1007,10 @@
 			"name": "Enable layered tooling",
 			"description": "For new tasks, expose only search, documentation, and execute gateway tools to the model. Enabled built-in, MCP, and custom tools remain available behind the gateway, reducing prompt context usage. Existing tasks keep their original tool protocol."
 		},
+		"LAYERED_TOOL_SEARCH_LIMIT": {
+			"name": "Layered tool search result limit",
+			"description": "Choose how many matching tools layered search returns (1–50). Default: 25."
+		},
 		"CHAT_HISTORY_LOOKUP": {
 			"name": "Enable chat history lookup",
 			"description": "Allow the model to semantically search past conversation logs stored in Roo's global storage. Results include the log location and matching line numbers."
